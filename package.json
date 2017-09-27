@@ -1,0 +1,25 @@
+{
+  "name": "livemaker-viewer",
+  "version": "1.0.0",
+  "description": "LiverMaker project and lns file viewer",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/index.js"
+  },
+  "author": "Lundarl Gholoi",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.15.4",
+    "iconv-lite": "^0.4.19",
+    "lodash": "^4.17.4",
+    "xml2js": "^0.4.19"
+  },
+  "devDependencies": {
+    "@types/express": "^4.0.37",
+    "@types/lodash": "^4.14.74",
+    "@types/node": "^8.0.28",
+    "@types/xml2js": "^0.4.0",
+    "typescript": "^2.5.2"
+  }
+}
