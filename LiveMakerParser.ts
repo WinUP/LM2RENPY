@@ -134,7 +134,7 @@ export function parseSceneCode(content: string): LiveMakerSceneCommand[] {
             if (nextSpace == -1 || nextSpace > endIndex) { // 没有参数的命令
                 currentCommand = {
                     type: <LiveMakerSceneCommandType> content.substring(i + 1, endIndex),
-                    param: new Array<LiveMakerSceneCommandParam>()
+                    param: {}
                 };
                 result.push(currentCommand);
                 currentCommand = null;
@@ -144,7 +144,7 @@ export function parseSceneCode(content: string): LiveMakerSceneCommand[] {
             // 一般命令
             currentCommand = {
                 type: <LiveMakerSceneCommandType> content.substring(i + 1, nextSpace),
-                param: new Array<LiveMakerSceneCommandParam>()
+                param: {}
             };
             i = nextSpace + 1;
             continue;
@@ -153,27 +153,16 @@ export function parseSceneCode(content: string): LiveMakerSceneCommand[] {
             let commandSplitter = content.indexOf('=', i + 1);
             if (content[commandSplitter + 1] == '"') { // 有引号的参数
                 let endPosition = content.indexOf('"', commandSplitter + 2);
-                let param: LiveMakerSceneCommandParam = {
-                    name: content.substring(i, commandSplitter),
-                    value: content.substring(commandSplitter + 2, endPosition)
-                };
-                currentCommand.param.push(param);
+                let param = {};
+                currentCommand.param[content.substring(i, commandSplitter)] = content.substring(commandSplitter + 2, endPosition);
                 i = endPosition + 1;
             } else { // 无引号的参数
                 if (nextSpace > endIndex || nextSpace == -1) { // 最后一个参数
-                    let param: LiveMakerSceneCommandParam = {
-                        name: content.substring(i, commandSplitter),
-                        value: content.substring(commandSplitter + 1, endIndex)
-                    };
-                    currentCommand.param.push(param);
+                    currentCommand.param[content.substring(i, commandSplitter)] = content.substring(commandSplitter + 1, endIndex);
                     i = endIndex;
                 } else {
                     // 一般参数
-                    let param: LiveMakerSceneCommandParam = {
-                        name: content.substring(i, commandSplitter),
-                        value: content.substring(commandSplitter + 1, nextSpace)
-                    };
-                    currentCommand.param.push(param);
+                    currentCommand.param[content.substring(i, commandSplitter)] = content.substring(commandSplitter + 1, nextSpace);
                     i = nextSpace + 1;
                 }
             }
@@ -191,7 +180,7 @@ export function parseSceneCode(content: string): LiveMakerSceneCommand[] {
         if (nextStart == -1) nextStart = content.length;
         currentCommand = {
             type: <LiveMakerSceneCommandType> PLATIN_TEXT_CODE_TYPE,
-            param: [{ name: PLATIN_TEXT_CODE_TYPE, value: content.substring(i, nextStart) }]
+            param: { PLATIN_TEXT_CODE_TYPE: content.substring(i, nextStart) }
         };
         result.push(currentCommand);
         currentCommand = null;
