@@ -10,7 +10,6 @@
   "author": "Lundarl Gholoi",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.15.4",
     "iconv-lite": "^0.4.19",
     "lodash": "^4.17.4",
     "xml2js": "^0.4.19"
