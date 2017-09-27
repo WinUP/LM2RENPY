@@ -1,6 +1,6 @@
 export interface LiveMakerSceneCommand {
     type: LiveMakerSceneCommandType;
-    param: LiveMakerSceneCommandParam[];
+    param: LiveMakerSceneCommandParam;
 }
 
 export enum LiveMakerSceneCommandType {
@@ -39,6 +39,5 @@ export enum LiveMakerSceneCommandType {
 }
 
 export interface LiveMakerSceneCommandParam {
-    name: string;
-    value: string;
+    [name: string]: string;
 }

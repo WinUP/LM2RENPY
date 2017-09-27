@@ -12,7 +12,7 @@ let scene: Scene[] = [];
 
 xml2js.parseString(str, { explicitArray : false, ignoreAttrs : false }, (err, result) => {
     scene = parseProject(result.Project);
-    fs.writeFileSync('resule.txt', JSON.stringify(scene, null, 2));
+    fs.writeFileSync('result.txt', JSON.stringify(scene, null, 2));
 });
 
 //const SERVER_PORT = 65534;
