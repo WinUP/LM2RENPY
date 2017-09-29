@@ -4,15 +4,15 @@ import * as xml2js from 'xml2js';
 //import * as express from "express";
 
 import { LiveMakerProject } from './include/LiveMakerProject';
-import { Scene } from './include/GeneralScript';
+import { Project } from './include/GeneralScript';
 import { parseProject } from './LiveMakerParser';
 
 let str = iconv.decode(fs.readFileSync('data/novel.prj'), 'shift-jis');
-let scene: Scene[] = [];
+let project: Project = null;
 
 xml2js.parseString(str, { explicitArray : false, ignoreAttrs : false }, (err, result) => {
-    scene = parseProject(result.Project);
-    fs.writeFileSync('result.txt', JSON.stringify(scene, null, 2));
+    project = parseProject(result.Project);
+    fs.writeFileSync('result.txt', JSON.stringify(project, null, 2));
 });
 
 //const SERVER_PORT = 65534;

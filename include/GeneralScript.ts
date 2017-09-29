@@ -1,5 +1,51 @@
 import { LiveMakerSceneCommand } from './LiveMakerSceneCode';
 
+export interface Project {
+    title: string;
+    width: number;
+    height: number;
+    scene: Scene[];
+    background: string;
+    variable: Variable<any>[];
+    messagebox: Messagebox[];
+    cg: string[];
+}
+
+export interface Messagebox {
+    name: string;
+    font: MessageboxFont;
+    backgroundColor: string;
+    backgroundImage: string;
+    centerX: number;
+    centerY: number;
+    width: number;
+    height: number;
+    marginTop: number;
+    marginBottom: number;
+    marginRight: number;
+    marginLeft: number;
+    alpha: number;
+    cursorImage: string;
+    cursorX: number;
+    cursorY: number;
+    nextPageImage: string;
+}
+
+export interface MessageboxFont {
+    antialias: boolean;
+    size: number;
+    lineMargin: number;
+    color: string;
+    colorLink: string;
+    colorHover: string;
+    shadow: number;
+    shadowColor: string;
+    border: number;
+    borderColor: string;
+    fontFamily: string;
+    fontChangeabled: boolean;
+}
+
 export interface Scene {
     id: number;
     name: string;

@@ -7,7 +7,7 @@ import {
     CommandContentText, EffectType, CommandContentEffect, CommandContentToggle, CommandContentWait, TextSpeed,
     CommandContentTextSpeed, CommandContentNameTarget, CommandContentTimeTarget, CommandContentMovie, RepeatMode,
     CommandContentQuake, QuakeType, Soundtrack, CommandContentSound, CommandContentStopSound, CommandContentChangeVolume,
-    CommandContentImage, CommandContentChangeImage, CommandContentDestroyImage
+    CommandContentImage, CommandContentChangeImage, CommandContentDestroyImage, Project, MessageboxFont, Messagebox
 } from './include/GeneralScript';
 import {
     LiveMakerProject, LiveMakerProjectSceneVar, LiveMakerProjectVarItemScope, LiveMakerProjectVarItemType,
@@ -26,10 +26,55 @@ import * as iconv from 'iconv-lite';
 
 export const PLATIN_TEXT_CODE_TYPE = LiveMakerSceneCommandType.PLAINTEXT;
 
-let availableCommandList: string[] = new Array<string>();
-
-export function parseProject(source: LiveMakerProject): Scene[] {
-    let result: Scene[] = [];
+export function parseProject(source: LiveMakerProject): Project {
+    let sceneResult: Scene[] = [];
+    let project: Project = {
+        title: source.Title,
+        width: +source.ScreenCX,
+        height: +source.ScreenCY,
+        background: source.BGColor,
+        scene: [],
+        variable: _.flatten([source.Var.Item]).map(v => Converter.lvarToVariable(v)),
+        messagebox: [],
+        cg: source.CGMode.List.Item
+    };
+    let messageboxResult: Messagebox[] = [];
+    source.MessageBox.Item.forEach(liveMessagebox => {
+        let messagebox: Messagebox = {
+            name: liveMessagebox.Name,
+            font: {
+                antialias: Converter.booleanStringToBoolean(liveMessagebox.Font.Antialias),
+                size: +liveMessagebox.Font.Size,
+                lineMargin: +liveMessagebox.Font.Space,
+                color: liveMessagebox.Font.Color,
+                colorLink: liveMessagebox.Font.LinkColor,
+                colorHover: liveMessagebox.Font.HoverColor,
+                shadow: +liveMessagebox.Font.Shade,
+                shadowColor: liveMessagebox.Font.ShadeColor,
+                border: +liveMessagebox.Font.Border,
+                borderColor: liveMessagebox.Font.BorderColor,
+                fontFamily: liveMessagebox.Font.Name,
+                fontChangeabled: Converter.booleanStringToBoolean(liveMessagebox.Font.FontChangeabled)
+            },
+            backgroundColor: liveMessagebox.BGColor,
+            backgroundImage: liveMessagebox.BGFile,
+            centerX: +liveMessagebox.PosX,
+            centerY: +liveMessagebox.PosY,
+            width: +liveMessagebox.Width,
+            height: +liveMessagebox.Height,
+            marginTop: +liveMessagebox.BGMarginT,
+            marginBottom: +liveMessagebox.BGMarginB,
+            marginRight: +liveMessagebox.BGMarginR,
+            marginLeft: +liveMessagebox.BGMarginL,
+            alpha: +liveMessagebox.BGAlpha,
+            cursorImage: liveMessagebox.CsrClick,
+            cursorX: +liveMessagebox.CsrPosX,
+            cursorY: +liveMessagebox.CsrPosY,
+            nextPageImage: liveMessagebox.SEClick
+        };
+        messageboxResult.push(messagebox);
+    });
+    project.messagebox = messageboxResult;
     source.Folder.Item.forEach(liveScene => {
         let scene: Scene = {
             id: +liveScene.ID,
@@ -121,11 +166,10 @@ export function parseProject(source: LiveMakerProject): Scene[] {
             if (block.type == BlockType.SceneStart)
                 scene.bootstrap = block.id;
         });
-        result.push(scene);
+        sceneResult.push(scene);
     });
-    if (availableCommandList.length > 0)
-        console.log(_.uniq(availableCommandList));
-    return result;
+    project.scene = sceneResult;
+    return project;
 }
 
 export function parseSceneCode(content: string): Command[] {
