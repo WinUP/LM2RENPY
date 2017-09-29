@@ -35,4 +35,5 @@ dist/
 .vscode/
 result.*
 command.*
+log.*
 data/
