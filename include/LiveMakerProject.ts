@@ -66,7 +66,9 @@ export interface LiveMakerProjectNodeBase {
     ID: string;
     Type: LiveMakerProjectNodeType;
     Caption: string;
-    Jump: CondIDPair[];
+    Jump: {
+        Item: CondIDPair[]
+    };
 }
 
 export enum LiveMakerProjectNodeType {

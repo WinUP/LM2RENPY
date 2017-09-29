@@ -7,7 +7,8 @@ import {
     CommandContentText, EffectType, CommandContentEffect, CommandContentToggle, CommandContentWait, TextSpeed,
     CommandContentTextSpeed, CommandContentNameTarget, CommandContentTimeTarget, CommandContentMovie, RepeatMode,
     CommandContentQuake, QuakeType, Soundtrack, CommandContentSound, CommandContentStopSound, CommandContentChangeVolume,
-    CommandContentImage, CommandContentChangeImage, CommandContentDestroyImage, Project, MessageboxFont, Messagebox
+    CommandContentImage, CommandContentChangeImage, CommandContentDestroyImage, Project, MessageboxFont, Messagebox,
+    ConditionContent, Condition
 } from './include/GeneralScript';
 import {
     LiveMakerProject, LiveMakerProjectSceneVar, LiveMakerProjectVarItemScope, LiveMakerProjectVarItemType,
@@ -20,11 +21,19 @@ import {
     LiveMakerSceneCommand, LiveMakerSceneCommandParam, LiveMakerSceneCommandType, LiveMakerSceneEffectType,
     LiveMakerPriority
 } from './include/LiveMakerSceneCode';
+import { LiveMakerMenu, LiveMakerMenuItem } from './include/LiveMakerMenu';
+
 import * as _ from 'lodash';
 import * as fs from 'fs';
 import * as iconv from 'iconv-lite';
 
-export const PLATIN_TEXT_CODE_TYPE = LiveMakerSceneCommandType.PLAINTEXT;
+export const PLAIN_TEXT_CODE_TYPE = LiveMakerSceneCommandType.PLAINTEXT;
+
+let totalNodeCount = 0;
+let totalSceneCount = 0;
+let totalFileCount = 0;
+let totalJumpCount = 0;
+let totalCommandCount = 0;
 
 export function parseProject(source: LiveMakerProject): Project {
     let sceneResult: Scene[] = [];
@@ -76,6 +85,7 @@ export function parseProject(source: LiveMakerProject): Project {
     });
     project.messagebox = messageboxResult;
     source.Folder.Item.forEach(liveScene => {
+        totalSceneCount++;
         let scene: Scene = {
             id: +liveScene.ID,
             name: liveScene.Caption,
@@ -83,16 +93,17 @@ export function parseProject(source: LiveMakerProject): Project {
             bootstrap: null,
             block: []
         };
-        console.log(`\n处理场景 ${liveScene.ID}（${liveScene.Caption}）`);
+        console.log(`\n场景 ${fixNumber((+liveScene.ID).toString(16).toUpperCase(), 8)}（${liveScene.Caption}）`);
         liveScene.Node.Item.forEach(node => {
+            totalNodeCount++;
             let block: Block<any> = {
                 id: +node.ID,
                 name: node.Caption,
                 type: Converter.nodetypeToBlocktype(node.Type),
-                next: null,
+                next: [],
                 data: null
             };
-            console.log(`处理节点 ${node.ID}（${node.Caption}）`);
+            console.log(`\t[节点] ${fixNumber((+node.ID).toString(16).toUpperCase(), 8)}（${node.Caption}）`);
             if (block.type == BlockType.Calculator) {
                 let realNode: LiveMakerProjectNodeCalc = node as LiveMakerProjectNodeCalc;
                 block.data = {
@@ -153,7 +164,7 @@ export function parseProject(source: LiveMakerProject): Project {
                     content: null
                 } as BlockNormal;
                 let path = `data/${fixNumber((+realNode.ID).toString(16).toUpperCase(), 8)}.lns`;
-                console.log(`处理内容文件 ${path}`);
+                console.log(`\t\t -> 内容文件 ${path}`);
                 let content: string = '';
                 if (fs.existsSync(path))
                     content = iconv.decode(fs.readFileSync(path), 'shift-jis');
@@ -162,6 +173,20 @@ export function parseProject(source: LiveMakerProject): Project {
             if (block.type == BlockType.Exit || block.type == BlockType.SceneEnd || block.type == BlockType.SceneStart) {
                 block.data = null;
             }
+            let jumpItem: Condition[] = [];
+            (node.Jump.Item ? _.flatten([node.Jump.Item]) : []).forEach(jump => {
+                totalJumpCount++;
+                let item: Condition = {
+                    targetId: +jump.ID,
+                    condition: []
+                };
+                let source = jump.Cond.replace(/\t/g, '').split('\n').map(v => [+v[0], v.substring(1)]);
+                let maxScope = source.map(v => +v[0]).reduce((r, v) => v > r ? v : r, 0);
+                source.forEach(v => v[0] = maxScope - (+v[0]));
+                item.condition = source.map(v => ({ content: v[1] + '', scopeIndent: +v[0] ? +v[0] : 0 }));
+                jumpItem.push(item);
+            });
+            block.next = jumpItem;
             scene.block.push(block);
             if (block.type == BlockType.SceneStart)
                 scene.bootstrap = block.id;
@@ -169,10 +194,12 @@ export function parseProject(source: LiveMakerProject): Project {
         sceneResult.push(scene);
     });
     project.scene = sceneResult;
+    console.log(`\n工程统计：共${totalSceneCount}个场景，${totalNodeCount}个节点，${totalFileCount}个文件，${totalJumpCount}次节点跳转, ${totalCommandCount}个场景指令`)
     return project;
 }
 
 export function parseSceneCode(content: string): Command[] {
+    totalFileCount++;
     content = content.replace(/[\r\n]/g, '').replace(/<BR>/g, '\n');
     let result: LiveMakerSceneCommand[] = new Array<LiveMakerSceneCommand>();
     let i = 0;
@@ -232,13 +259,14 @@ export function parseSceneCode(content: string): Command[] {
         let nextStart = content.indexOf('<', i + 1);
         if (nextStart == -1) nextStart = content.length;
         currentCommand = {
-            type: <LiveMakerSceneCommandType> PLATIN_TEXT_CODE_TYPE,
+            type: <LiveMakerSceneCommandType> PLAIN_TEXT_CODE_TYPE,
             param: { PLAINTEXT: content.substring(i, nextStart) }
         };
         result.push(currentCommand);
         currentCommand = null;
         i = nextStart;
     }
+    totalCommandCount += result.length;
     return convertSceneCode(result);
 }
 
@@ -621,7 +649,8 @@ const Converter = {
     lcalcToCaltulatorCode: function (source: LiveMakerProjectCalcItem): Code {
         let result: Code = {
             type: null,
-            data: null
+            data: null,
+            scopeIndent: +source.$.Indent
         };
         if (source.$.Command == LiveMakerProjectVarCommandType.Calc) {
             result.type = CalculatorType.Calc;
@@ -947,14 +976,6 @@ const Converter = {
         }
     }
 };
-
-function isTextContent(type: LiveMakerSceneCommandType): boolean {
-    return type == LiveMakerSceneCommandType.B ||
-           type == LiveMakerSceneCommandType.I ||
-           type == LiveMakerSceneCommandType.U ||
-           type == LiveMakerSceneCommandType.PLAINTEXT ||
-           type == LiveMakerSceneCommandType.BR;
-}
 
 function fixNumber(num,length){
     let numstr = num.toString();

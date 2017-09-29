@@ -63,8 +63,13 @@ export interface Block<T> {
 }
 
 export interface Condition {
-    target: Block<any>;
+    targetId: number;
+    condition: ConditionContent[];
+}
+
+export interface ConditionContent {
     content: string;
+    scopeIndent: number;
 }
 
 export enum BlockType {
@@ -123,6 +128,7 @@ export interface BlockChoice {
 export interface Code {
     type: CalculatorType;
     data: CalculatorData;
+    scopeIndent: number;
 }
 
 export interface Variable<T> {

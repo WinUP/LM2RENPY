@@ -11,22 +11,9 @@ let str = iconv.decode(fs.readFileSync('data/novel.prj'), 'shift-jis');
 let project: Project = null;
 
 xml2js.parseString(str, { explicitArray : false, ignoreAttrs : false }, (err, result) => {
+    console.log('LiverMaker工程转换器 ©2017 同人社团GILESFVK ËKITES');
+    console.log('GNU LESSER GENERAL PUBLIC LICENSE Version 3');
     project = parseProject(result.Project);
     fs.writeFileSync('result.txt', JSON.stringify(project, null, 2));
+    console.log(`通用脚本文件已保存至result.txt（${fs.statSync('result.txt').size}字节）`)
 });
-
-//const SERVER_PORT = 65534;
-//
-//let application: express.Application = express();
-//let apiRouter: express.Router;
-//application.listen(SERVER_PORT, function() {
-//    console.log(`Server start at port ${SERVER_PORT}`);
-//});
-//
-//application.get('/scenes', (request, response) => {
-//    if (!scene) {
-//        response.send('[]');
-//        return;
-//    }
-//    response.send(scene);
-//});
