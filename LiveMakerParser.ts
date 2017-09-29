@@ -3,7 +3,11 @@ import {
     CalculatorCalcData, CalculatorBreakData, CalculatorCallData, CalculatorContinueData, CalculatorElseData,
     CalculatorElseifData, CalculatorIfData, CalculatorImageNewData, CalculatorObjDelData, CalculatorSoundData,
     CalculatorTextInsData, CalculatorVarDelData, CalculatorVarNewData, CalculatorWaitData, CalculatorWhileData,
-    BlockChoice, Align, Choice, BlockInput, Input, BlockJump, BlockNavigator, BlockNormal
+    BlockChoice, Align, Choice, BlockInput, Input, BlockJump, BlockNavigator, BlockNormal, Command, CommandType,
+    CommandContentText, EffectType, CommandContentEffect, CommandContentToggle, CommandContentWait, TextSpeed,
+    CommandContentTextSpeed, CommandContentNameTarget, CommandContentTimeTarget, CommandContentMovie, RepeatMode,
+    CommandContentQuake, QuakeType, Soundtrack, CommandContentSound, CommandContentStopSound, CommandContentChangeVolume,
+    CommandContentImage, CommandContentChangeImage, CommandContentDestroyImage
 } from './include/GeneralScript';
 import {
     LiveMakerProject, LiveMakerProjectSceneVar, LiveMakerProjectVarItemScope, LiveMakerProjectVarItemType,
@@ -13,13 +17,14 @@ import {
     LiveMakerProjectNodeScene
 } from './include/LiveMakerProject';
 import {
-    LiveMakerSceneCommand, LiveMakerSceneCommandParam, LiveMakerSceneCommandType
+    LiveMakerSceneCommand, LiveMakerSceneCommandParam, LiveMakerSceneCommandType, LiveMakerSceneEffectType,
+    LiveMakerPriority
 } from './include/LiveMakerSceneCode';
 import * as _ from 'lodash';
 import * as fs from 'fs';
 import * as iconv from 'iconv-lite';
 
-export const PLATIN_TEXT_CODE_TYPE = 'PLAINTEXT';
+export const PLATIN_TEXT_CODE_TYPE = LiveMakerSceneCommandType.PLAINTEXT;
 
 let availableCommandList: string[] = new Array<string>();
 
@@ -33,6 +38,7 @@ export function parseProject(source: LiveMakerProject): Scene[] {
             bootstrap: null,
             block: []
         };
+        console.log(`\n处理场景 ${liveScene.ID}（${liveScene.Caption}）`);
         liveScene.Node.Item.forEach(node => {
             let block: Block<any> = {
                 id: +node.ID,
@@ -41,6 +47,7 @@ export function parseProject(source: LiveMakerProject): Scene[] {
                 next: null,
                 data: null
             };
+            console.log(`处理节点 ${node.ID}（${node.Caption}）`);
             if (block.type == BlockType.Calculator) {
                 let realNode: LiveMakerProjectNodeCalc = node as LiveMakerProjectNodeCalc;
                 block.data = {
@@ -60,8 +67,8 @@ export function parseProject(source: LiveMakerProject): Scene[] {
                     hoverSound: realNode.SoundHover,
                     selectSound: realNode.SoundSelect,
                     time: realNode.TimeLimit,
-                    positionX: realNode.PosX,
-                    positionY: realNode.PoxY,
+                    positionX: Converter.stringAlignToAlign(realNode.PosX),
+                    positionY: Converter.stringAlignToAlign(realNode.PosY),
                     align: Converter.lalignToAlign(realNode.HAlign)
                 } as BlockChoice;
             }
@@ -69,8 +76,8 @@ export function parseProject(source: LiveMakerProject): Scene[] {
                 let realNode: LiveMakerProjectNodeInput = node as LiveMakerProjectNodeInput;
                 block.data = {
                     title: realNode.Prompt,
-                    positionX: realNode.PosX,
-                    positionY: realNode.PosY,
+                    positionX: Converter.stringAlignToAlign(realNode.PosX),
+                    positionY: Converter.stringAlignToAlign(realNode.PosY),
                     enableCancel: Converter.booleanStringToBoolean(realNode.CancelEnabled),
                     content: _.flatten([realNode.Text.Item]).map(v => ({
                         maxLength: +v.MaxLen,
@@ -101,13 +108,14 @@ export function parseProject(source: LiveMakerProject): Scene[] {
                     content: null
                 } as BlockNormal;
                 let path = `data/${fixNumber((+realNode.ID).toString(16).toUpperCase(), 8)}.lns`;
+                console.log(`处理内容文件 ${path}`);
                 let content: string = '';
                 if (fs.existsSync(path))
                     content = iconv.decode(fs.readFileSync(path), 'shift-jis');
                 block.data.content = parseSceneCode(content);
             }
             if (block.type == BlockType.Exit || block.type == BlockType.SceneEnd || block.type == BlockType.SceneStart) {
-                block.data = { };
+                block.data = null;
             }
             scene.block.push(block);
             if (block.type == BlockType.SceneStart)
@@ -115,12 +123,13 @@ export function parseProject(source: LiveMakerProject): Scene[] {
         });
         result.push(scene);
     });
-
+    if (availableCommandList.length > 0)
+        console.log(_.uniq(availableCommandList));
     return result;
 }
 
-export function parseSceneCode(content: string): LiveMakerSceneCommand[] {
-    content = content.replace(/[\r\n]/g, '');
+export function parseSceneCode(content: string): Command[] {
+    content = content.replace(/[\r\n]/g, '').replace(/<BR>/g, '\n');
     let result: LiveMakerSceneCommand[] = new Array<LiveMakerSceneCommand>();
     let i = 0;
     let currentCommand: LiveMakerSceneCommand = null;
@@ -180,19 +189,276 @@ export function parseSceneCode(content: string): LiveMakerSceneCommand[] {
         if (nextStart == -1) nextStart = content.length;
         currentCommand = {
             type: <LiveMakerSceneCommandType> PLATIN_TEXT_CODE_TYPE,
-            param: { PLATIN_TEXT_CODE_TYPE: content.substring(i, nextStart) }
+            param: { PLAINTEXT: content.substring(i, nextStart) }
         };
         result.push(currentCommand);
         currentCommand = null;
         i = nextStart;
     }
+    return convertSceneCode(result);
+}
 
+export function convertSceneCode(source: LiveMakerSceneCommand[]): Command[] {
+    let result: Command[] = new Array<Command>();
+    let i = 0;
+    while (i < source.length) {
+        let original = source[i];
+        if (original.type == LiveMakerSceneCommandType.PLAINTEXT || original.type == LiveMakerSceneCommandType.B ||
+            original.type == LiveMakerSceneCommandType.I || original.type == LiveMakerSceneCommandType.U ||
+            original.type == LiveMakerSceneCommandType.FONT) {
+            let initialStyle: CommandContentText = {
+                text: null,
+                size: null,
+                bold: null,
+                italic: null,
+                underline: null,
+                color: null,
+                borderColor: null,
+                borderWidth: null,
+                shadowColor: null,
+                shadowOffset: null
+            };
+            let textParseResult = Converter.textSceneCommandToTextCommand(source, i, initialStyle);
+            result = result.concat(textParseResult.result.map<Command>(v => ({
+                type: CommandType.Text,
+                content: v
+            })));
+            i = textParseResult.lastPointer;
+            if (source[i - 1].type == LiveMakerSceneCommandType.PLAINTEXT)
+                i--;
+        } else if (original.type == LiveMakerSceneCommandType.PS) {
+            result.push({
+                type: CommandType.WaitForClick,
+                content: null
+            });
+        } else if (original.type == LiveMakerSceneCommandType.PG) {
+            result.push({
+                type: CommandType.WaitAndClear,
+                content: null
+            });
+        } else if (original.type == LiveMakerSceneCommandType.FLIP) {
+            let content: CommandContentEffect = {
+                name: original.param['NAME'],
+                type: Converter.flipTypeToEffectType(<LiveMakerSceneEffectType> original.param['EFFECT']),
+                reverse: Converter.onOffToBoolean(original.param['REVERSE']),
+                default: Converter.onOffToBoolean(original.param['DEFAULT']),
+                source: original.param['SOURCE'],
+                parameter: [ original.param['PARAM1'], original.param['PARAM2'] ]
+            }
+            result.push({
+                type: CommandType.Effect,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.SYSMENUON) {
+            let content: CommandContentToggle = {
+                value: true
+            };
+            result.push({
+                type: CommandType.MenuToggle,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.SYSMENUOFF) {
+            let content: CommandContentToggle = {
+                value: false
+            };
+            result.push({
+                type: CommandType.MenuToggle,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.SAVELOADON) {
+            let content: CommandContentToggle = {
+                value: true
+            };
+            result.push({
+                type: CommandType.SaveLoadToggle,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.SAVELOADOFF) {
+            let content: CommandContentToggle = {
+                value: false
+            };
+            result.push({
+                type: CommandType.SaveLoadToggle,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.WAIT) {
+            let content: CommandContentWait = {
+                time: +original.param['TIME'],
+                clickSkip: Converter.onOffToBoolean(original.param['CLICKABORT']),
+                allowQuickSkip: Converter.onOffToBoolean(original.param['SKIPENABLED'])
+            };
+            result.push({
+                type: CommandType.Wait,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.WAITFOR) {
+            let content: CommandContentWait = {
+                time: +original.param['TIME'],
+                targetName: original.param['NAME'],
+                clickSkip: Converter.onOffToBoolean(original.param['CLICKABORT']),
+                allowQuickSkip: false
+            };
+            result.push({
+                type: CommandType.WaitUntilFinish,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.TXSPF || original.type == LiveMakerSceneCommandType.TXSPN ||
+                   original.type == LiveMakerSceneCommandType.TXSPS) {
+            let speed = TextSpeed.Normal;
+            if (original.type == LiveMakerSceneCommandType.TXSPF)
+                speed = TextSpeed.Fatest;
+            if (original.type == LiveMakerSceneCommandType.TXSPS)
+                speed = TextSpeed.Slow;
+            let content: CommandContentTextSpeed = {
+                speed: speed
+            };
+            result.push({
+                type: CommandType.ChangeTextSpeed,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.VAR) {
+            let content: CommandContentNameTarget = {
+                name: original.param['NAME']
+            };
+            result.push({
+                type: CommandType.ShowVariableContent,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.MESBOX) {
+            let content: CommandContentTimeTarget = {
+                time: +original.param['TIME']
+            };
+            result.push({
+                type: CommandType.MessageBox,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.CHGMESBOX) {
+            let content: CommandContentNameTarget = {
+                name: original.param['NAME']
+            };
+            result.push({
+                type: CommandType.ChangeMessageBox,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.DELMESBOX) {
+            let content: CommandContentTimeTarget = {
+                time: +original.param['TIME']
+            };
+            result.push({
+                type: CommandType.DestroyMessageBox,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.MOVIE) {
+            let content: CommandContentMovie = {
+                source: 'MOVIE\\' + original.param['SOURCE'],
+                zoomPencentage: +original.param['ZOOM'],
+                x: Converter.stringAlignToAlign(original.param['X']),
+                y: Converter.stringAlignToAlign(original.param['Y']),
+                mode: Converter.stringModeToRepeatMode(original.param['MODE'])
+            };
+            result.push({
+                type: CommandType.Movie,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.QUAKE) {
+            let content: CommandContentQuake = {
+                target: original.param['NAME'].split(','),
+                time: +original.param['TIME'],
+                random: Converter.onOffToBoolean(original.param['RANDOM']),
+                x: +original.param['X'],
+                y: +original.param['Y'],
+                repeatCount: +original.param['CYCLE'],
+                type: Converter.typeToQuakeType(original.param['TYPE'])
+            };
+            result.push({
+                type: CommandType.Quake,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.STOPQUAKE) {
+            let content: CommandContentTimeTarget = {
+                time: +original.param['TIME']
+            };
+            result.push({
+                type: CommandType.StopQuake,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.SOUND) {
+            let content: CommandContentSound = {
+                source: 'サウンド\\' + original.param['SOURCE'],
+                track: Converter.stringToTrack(original.param['TRACK']),
+                mode: Converter.stringModeToRepeatMode(original.param['MODE']),
+                volume: +original.param['VOLUME']
+            };
+            result.push({
+                type: CommandType.Sound,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.STOPSND) {
+            let content: CommandContentStopSound = {
+                time: +original.param['TIME'],
+                track: Converter.stringToTrack(original.param['TRACK'])
+            };
+            result.push({
+                type: CommandType.StopSound,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.CHGVOL) {
+            let content: CommandContentChangeVolume = {
+                time: +original.param['TIME'],
+                track: Converter.stringToTrack(original.param['TRACK']),
+                volume: +original.param['VOLUME'],
+                waitUntilFinish: Converter.onOffToBoolean(original.param['WAIT'])
+            };
+            result.push({
+                type: CommandType.ChangeVolume,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.IMAGE) {
+            let content: CommandContentImage = {
+                name: original.param['NAME'],
+                source: 'グラフィック\\' + original.param['SOURCE'],
+                x: Converter.stringAlignToAlign(original.param['X']),
+                y: Converter.stringAlignToAlign(original.param['Y']),
+                priority: LiveMakerPriority[original.param['PRIORITY']],
+                useFlip: original.param['FLIP'],
+                mode: Converter.stringModeToRepeatMode(original.param['MODE'])
+            };
+            result.push({
+                type: CommandType.Image,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.CHGIMG) {
+            let content: CommandContentChangeImage = {
+                name: original.param['NAME'],
+                source: 'グラフィック\\' + original.param['SOURCE'],
+                useFlip: original.param['FLIP'],
+                mode: Converter.stringModeToRepeatMode(original.param['MODE'])
+            };
+            result.push({
+                type: CommandType.ChangeImage,
+                content: content
+            });
+        } else if (original.type == LiveMakerSceneCommandType.DELIMG) {
+            let content: CommandContentDestroyImage = {
+                target: original.param['NAME'].split(','),
+                useFlip: original.param['FLIP']
+            };
+            result.push({
+                type: CommandType.DestroyImage,
+                content: content
+            });
+        }
+        i++;
+    }
     return result;
 }
 
 const Converter = {
     booleanStringToBoolean: function (source: BooleanInString): boolean {
         return source == BooleanInString.True;
+    },
+    onOffToBoolean: function (source: string): boolean {
+        return source == 'ON';
     },
     lvarToVariable: function (source: LiveMakerProjectSceneVar): Variable<any> {
         let result: Variable<any> = {
@@ -428,9 +694,223 @@ const Converter = {
             return source.substring(1, source.length - 1);
         else
             return source;
+    },
+    textSceneCommandToTextCommand: function (source: LiveMakerSceneCommand[], pointer: number, initialStyle: CommandContentText): { lastPointer: number, result: CommandContentText[] } {
+        let endPosition = pointer;
+        let result: CommandContentText[] = new Array<CommandContentText>();
+        let i = pointer;
+        if (source[i].type == LiveMakerSceneCommandType.FONT) {
+            endPosition = _.findIndex(source, e => e.type == LiveMakerSceneCommandType.FONT_END, pointer);
+            initialStyle.size = +source[i].param['SIZE'];
+            initialStyle.color = source[i].param['COLOR'];
+            initialStyle.borderWidth = +source[i].param['BORDER'];
+            initialStyle.borderColor = source[i].param['BCOLOR'];
+            initialStyle.shadowOffset = +source[i].param['SHADOW'];
+            initialStyle.shadowColor = source[i].param['SCOLOR'];
+        }
+        if (source[i].type == LiveMakerSceneCommandType.B) {
+            endPosition = _.findIndex(source, e => e.type == LiveMakerSceneCommandType.B_END, pointer);
+            initialStyle.bold = true;
+        }
+        if (source[i].type == LiveMakerSceneCommandType.I) {
+            endPosition = _.findIndex(source, e => e.type == LiveMakerSceneCommandType.I_END, pointer);
+            initialStyle.italic = true;
+        }
+        if (source[i].type == LiveMakerSceneCommandType.U) {
+            endPosition = _.findIndex(source, e => e.type == LiveMakerSceneCommandType.U_END, pointer);
+            initialStyle.underline = true;
+        }
+        if (source[i].type == LiveMakerSceneCommandType.PLAINTEXT) {
+            endPosition = i + 1;
+            i--;
+        }
+        i++;
+        while (i < endPosition) {
+            if (source[i].type != LiveMakerSceneCommandType.PLAINTEXT) {
+                let parseResult = Converter.textSceneCommandToTextCommand(source, i, initialStyle);
+                result = result.concat(parseResult.result);
+                i = parseResult.lastPointer + 1;
+                continue;
+            }
+            let text = _.cloneDeep(initialStyle);
+            text.text = source[i].param[LiveMakerSceneCommandType.PLAINTEXT]
+            result.push(text);
+            i++;
+        }
+        if (!source[i]) {
+            // 不需要处理
+        } else if (source[i].type == LiveMakerSceneCommandType.FONT_END) {
+            initialStyle.size = null;
+            initialStyle.color = null;
+            initialStyle.borderWidth = null;
+            initialStyle.borderColor = null;
+            initialStyle.shadowOffset = null;
+            initialStyle.shadowColor = null;
+        } else if (source[i].type == LiveMakerSceneCommandType.B_END) {
+            initialStyle.bold = null;
+        } else if (source[i].type == LiveMakerSceneCommandType.I_END) {
+            initialStyle.italic = null;
+        } else if (source[i].type == LiveMakerSceneCommandType.U_END) {
+            initialStyle.underline = null;
+        }
+        return {
+            lastPointer: i,
+            result: result
+        };
+    },
+    flipTypeToEffectType: function (source: LiveMakerSceneEffectType): EffectType {
+        switch (source) {
+            case LiveMakerSceneEffectType.BIG:
+                return EffectType.ZoomBig;
+            case LiveMakerSceneEffectType.BLACK:
+                return EffectType.Black;
+            case LiveMakerSceneEffectType.BLINDH:
+                return EffectType.BlindHorizontal;
+            case LiveMakerSceneEffectType.BLINDV:
+                return EffectType.BlindVertical;
+            case LiveMakerSceneEffectType.BLOCKCOIL:
+                return EffectType.BlockCoil;
+            case LiveMakerSceneEffectType.BLOCKRANDOM:
+                return EffectType.BlockRandom;
+            case LiveMakerSceneEffectType.BLURB:
+                return EffectType.BlurBlack;
+            case LiveMakerSceneEffectType.BLURW:
+                return EffectType.BlurWhite;
+            case LiveMakerSceneEffectType.CIRCLE:
+                return EffectType.Circle;
+            case LiveMakerSceneEffectType.CLOCKHAND:
+                return EffectType.Clockhand;
+            case LiveMakerSceneEffectType.CRACK:
+                return EffectType.Crack;
+            case LiveMakerSceneEffectType.CURTAINH:
+                return EffectType.CurtainHorizontal;
+            case LiveMakerSceneEffectType.CURTAINV:
+                return EffectType.CurtainVertical;
+            case LiveMakerSceneEffectType.DITHER:
+                return EffectType.Dither;
+            case LiveMakerSceneEffectType.FADE:
+                return EffectType.Fade;
+            case LiveMakerSceneEffectType.FAN:
+                return EffectType.FanCenter;
+            case LiveMakerSceneEffectType.FLASH:
+                return EffectType.Flash;
+            case LiveMakerSceneEffectType.GRID:
+                return EffectType.Grid;
+            case LiveMakerSceneEffectType.GRIDH:
+                return EffectType.GridHorizontal;
+            case LiveMakerSceneEffectType.GRIDV:
+                return EffectType.GridVertical;
+            case LiveMakerSceneEffectType.MASK:
+                return EffectType.Mask;
+            case LiveMakerSceneEffectType.MASKB:
+                return EffectType.MaskBlack;
+            case LiveMakerSceneEffectType.MASKW:
+                return EffectType.MaskWhite;
+            case LiveMakerSceneEffectType.MOSAIC:
+                return EffectType.Mosaic;
+            case LiveMakerSceneEffectType.NONE:
+                return EffectType.None;
+            case LiveMakerSceneEffectType.RIPPLE:
+                return EffectType.Ripple;
+            case LiveMakerSceneEffectType.RUBBERH:
+                return EffectType.RubberHorizontal;
+            case LiveMakerSceneEffectType.RUBBERV:
+                return EffectType.RubberVertical;
+            case LiveMakerSceneEffectType.SCRATCHH:
+                return EffectType.ScratchHorizontal;
+            case LiveMakerSceneEffectType.SCRATCHV:
+                return EffectType.ScratchVertical;
+            case LiveMakerSceneEffectType.SCROLLH:
+                return EffectType.ScrollHorizontal;
+            case LiveMakerSceneEffectType.SCROLLV:
+                return EffectType.ScrollVertical;
+            case LiveMakerSceneEffectType.SMALL:
+                return EffectType.ZoomSmall;
+            case LiveMakerSceneEffectType.SPOT:
+                return EffectType.Spot;
+            case LiveMakerSceneEffectType.TWISTH:
+                return EffectType.TwistHorizontal;
+            case LiveMakerSceneEffectType.TWISTV:
+                return EffectType.TwistVertical;
+            case LiveMakerSceneEffectType.WFAN:
+                return EffectType.FanBorder;
+            case LiveMakerSceneEffectType.WHITE:
+                return EffectType.White;
+            case LiveMakerSceneEffectType.ZOOMIN:
+                return EffectType.ZoomIn;
+            default:
+                throw '找不到任何匹配的效果类型：' + source;
+        }
+    },
+    stringAlignToAlign: function (source: string): Align | number {
+        switch (source) {
+            case 'L':
+                return Align.Left;
+            case 'C':
+                return Align.Center;
+            case 'R':
+                return Align.Right;
+            case 'T':
+                return Align.Top;
+            case 'B':
+                return Align.Bottom;
+            default:
+                return +source;
+        }
+    },
+    stringModeToRepeatMode: function (source: string): RepeatMode {
+        switch (source) {
+            case 'N':
+                return RepeatMode.Normal;
+            case 'R':
+                return RepeatMode.Repeat;
+            case 'W':
+                return RepeatMode.WaitUntilFinish;
+            case 'F':
+                return RepeatMode.DestroyAfterFinish;
+            default:
+                throw '找不到对应的循环模式：' + source;
+        }
+    },
+    typeToQuakeType: function (source: string): QuakeType {
+        switch (source) {
+            case 'Q':
+                return QuakeType.Random;
+            case 'W':
+                return QuakeType.Wave;
+            case 'B':
+                return QuakeType.Jump;
+            default:
+                throw '找不到对应的摇动类型：' + source;
+        }
+    },
+    stringToTrack: function (source: string): Soundtrack {
+        switch (source) {
+            case 'B':
+                return Soundtrack.BGM;
+            case 'B2':
+                return Soundtrack.BGM2;
+            case 'V':
+                return Soundtrack.Voice;
+            case 'V2':
+                return Soundtrack.Voice2;
+            case 'S':
+                return Soundtrack.Effect;
+            case 'S2':
+                return Soundtrack.Effect2;
+            default:
+                throw '找不到对应的音轨：' + source;
+        }
     }
 };
 
+function isTextContent(type: LiveMakerSceneCommandType): boolean {
+    return type == LiveMakerSceneCommandType.B ||
+           type == LiveMakerSceneCommandType.I ||
+           type == LiveMakerSceneCommandType.U ||
+           type == LiveMakerSceneCommandType.PLAINTEXT ||
+           type == LiveMakerSceneCommandType.BR;
+}
 
 function fixNumber(num,length){
     let numstr = num.toString();

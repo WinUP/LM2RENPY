@@ -127,7 +127,7 @@ export interface LiveMakerProjectNodeChoice extends LiveMakerProjectNodeBase {
     SoundSelect: string;
     TimeLimit: string;
     PosX: string;
-    PoxY: string;
+    PosY: string;
     HAlign: "0" | "1" | "2";
     CutEnabled: BooleanInString;
 }
