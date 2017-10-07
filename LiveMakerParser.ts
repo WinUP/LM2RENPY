@@ -8,7 +8,7 @@ import {
     CommandContentTextSpeed, CommandContentNameTarget, CommandContentTimeTarget, CommandContentMovie, RepeatMode,
     CommandContentQuake, QuakeType, Soundtrack, CommandContentSound, CommandContentStopSound, CommandContentChangeVolume,
     CommandContentImage, CommandContentChangeImage, CommandContentDestroyImage, Project, MessageboxFont, Messagebox,
-    ConditionContent, Condition
+    ConditionContent, Condition, BlockMenu, BlockMenuCondition, BlockMenuItem
 } from './include/GeneralScript';
 import {
     LiveMakerProject, LiveMakerProjectSceneVar, LiveMakerProjectVarItemScope, LiveMakerProjectVarItemType,
@@ -26,14 +26,18 @@ import { LiveMakerMenu, LiveMakerMenuItem } from './include/LiveMakerMenu';
 import * as _ from 'lodash';
 import * as fs from 'fs';
 import * as iconv from 'iconv-lite';
+import * as xml from 'fast-xml-parser';
+import * as fs_path from 'path';
 
 export const PLAIN_TEXT_CODE_TYPE = LiveMakerSceneCommandType.PLAINTEXT;
+export const PROJECT_RESOURCE_ROOT = 'C:\\Users\\lghol\\OneDrive\\Backup\\SCB Project\\runimage\\';
 
 let totalNodeCount = 0;
 let totalSceneCount = 0;
 let totalFileCount = 0;
 let totalJumpCount = 0;
 let totalCommandCount = 0;
+let totalMenuCount = 0;
 
 export function parseProject(source: LiveMakerProject): Project {
     let sceneResult: Scene[] = [];
@@ -110,8 +114,49 @@ export function parseProject(source: LiveMakerProject): Project {
                     variable: typeof realNode.Var == 'string' ? [] : _.flatten([realNode.Var.Item]).map(v => Converter.lvarToVariable(v)),
                     code: typeof realNode.Calc == 'string' ? [] : _.flatten([realNode.Calc.Item]).map(v => Converter.lcalcToCaltulatorCode(v))
                 } as BlockCalculator;
-            }
-            if (block.type == BlockType.Choice) {
+            } else if (block.type == BlockType.Menu) {
+                let realNode: LiveMakerProjectNodeMenu = node as LiveMakerProjectNodeMenu;
+                block.data = {
+                    item: [],
+                    fadeIn: +realNode.FadeinTime,
+                    fadeOut: +realNode.FadeoutTime,
+                    canCancel: Converter.booleanStringToBoolean(realNode.CancelEnabled),
+                    hoverSound: realNode.SoundHover,
+                    clickSound: realNode.SoundSelect,
+                    timeLimitation: +realNode.TimeLimit,
+                    condition: [],
+                    visibleCondition: [],
+                    enableCondition: []
+                } as BlockMenu;
+                let condition: BlockMenuCondition[] = [];
+                (realNode.Cond.Item ? _.flatten([realNode.Cond.Item]) : []).forEach(cond => {
+                    condition.push({
+                        choice: cond.Name,
+                        condition: Converter.stringToConditionContent(cond.Cond)
+                    });
+                });
+                block.data.condition = condition;
+                condition = [];
+                (realNode.VisibleCond.Item ? _.flatten([realNode.VisibleCond.Item]) : []).forEach(cond => {
+                    condition.push({
+                        choice: cond.Name,
+                        condition: Converter.stringToConditionContent(cond.Cond)
+                    });
+                });
+                block.data.visibleCondition = condition;
+                condition = [];
+                (realNode.SelectedCond.Item ? _.flatten([realNode.SelectedCond.Item]) : []).forEach(cond => {
+                    condition.push({
+                        choice: cond.Name,
+                        condition: Converter.stringToConditionContent(cond.Cond)
+                    });
+                });
+                block.data.enableCondition = condition;
+                let path = `${PROJECT_RESOURCE_ROOT}\\${realNode.Source}`;
+                console.log(`\t\t -> 选单文件 ${realNode.Source}`);
+                let rawData: LiveMakerMenu = xml.parse(iconv.decode(fs.readFileSync(path), 'shift-jis'), { arrayMode: false }).PrevMenu;
+                block.data.item = parseMenu(_.flatten([rawData.Button.Item]), path);
+            } else if (block.type == BlockType.Choice) {
                 let realNode: LiveMakerProjectNodeChoice = node as LiveMakerProjectNodeChoice;
                 block.data = {
                     choice: _.flatten([realNode.Menu.Item]).map(v => ({
@@ -127,8 +172,7 @@ export function parseProject(source: LiveMakerProject): Project {
                     positionY: Converter.stringAlignToAlign(realNode.PosY),
                     align: Converter.lalignToAlign(realNode.HAlign)
                 } as BlockChoice;
-            }
-            if (block.type == BlockType.Input) {
+            } else if (block.type == BlockType.Input) {
                 let realNode: LiveMakerProjectNodeInput = node as LiveMakerProjectNodeInput;
                 block.data = {
                     title: realNode.Prompt,
@@ -142,21 +186,18 @@ export function parseProject(source: LiveMakerProject): Project {
                         title: v.Caption
                     }) as Input)
                 } as BlockInput;
-            }
-            if (block.type == BlockType.Jump) {
+            } else if (block.type == BlockType.Jump) {
                 let realNode: LiveMakerProjectNodeJump = node as LiveMakerProjectNodeJump;
                 block.data = {
                     target: +realNode.Target
                 } as BlockJump;
-            }
-            if (block.type == BlockType.Navigator) {
+            } else if (block.type == BlockType.Navigator) {
                 let realNode: LiveMakerProjectNodeNavigate = node as LiveMakerProjectNodeNavigate;
                 block.data = {
                     target: +realNode.Target,
                     targetPage: (realNode.TargetPage && realNode.TargetPage != '') ? realNode.TargetPage : null
                 } as BlockNavigator;
-            }
-            if (block.type == BlockType.Normal) {
+            } else if (block.type == BlockType.Normal) {
                 let realNode: LiveMakerProjectNodeScene = node as LiveMakerProjectNodeScene;
                 block.data = {
                     trackHistory: !Converter.booleanStringToBoolean(realNode.NotStory),
@@ -169,22 +210,16 @@ export function parseProject(source: LiveMakerProject): Project {
                 if (fs.existsSync(path))
                     content = iconv.decode(fs.readFileSync(path), 'shift-jis');
                 block.data.content = parseSceneCode(content);
-            }
-            if (block.type == BlockType.Exit || block.type == BlockType.SceneEnd || block.type == BlockType.SceneStart) {
+            } else if (block.type == BlockType.Exit || block.type == BlockType.SceneEnd || block.type == BlockType.SceneStart) {
                 block.data = null;
             }
             let jumpItem: Condition[] = [];
             (node.Jump.Item ? _.flatten([node.Jump.Item]) : []).forEach(jump => {
                 totalJumpCount++;
-                let item: Condition = {
+                jumpItem.push({
                     targetId: +jump.ID,
-                    condition: []
-                };
-                let source = jump.Cond.replace(/\t/g, '').split('\n').map(v => [+v[0], v.substring(1)]);
-                let maxScope = source.map(v => +v[0]).reduce((r, v) => v > r ? v : r, 0);
-                source.forEach(v => v[0] = maxScope - (+v[0]));
-                item.condition = source.map(v => ({ content: v[1] + '', scopeIndent: +v[0] ? +v[0] : 0 }));
-                jumpItem.push(item);
+                    condition: Converter.stringToConditionContent(jump.Cond)
+                });
             });
             block.next = jumpItem;
             scene.block.push(block);
@@ -523,6 +558,21 @@ export function convertSceneCode(source: LiveMakerSceneCommand[]): Command[] {
         i++;
     }
     return result;
+}
+
+export function parseMenu(source: LiveMakerMenuItem[], path: string): BlockMenuItem[] {
+    totalMenuCount++;
+    let pathPrefix = path.substring(0, path.lastIndexOf('\\'));
+    return source.map(item => ({
+        left: item.Left,
+        top: item.Top,
+        previewLeft: item.PrevLeft,
+        previewTop: item.PrevTop,
+        imagePath: item.Path ? fs_path.resolve(pathPrefix, item.Path): '',
+        hoverPath: item.InImagePath ? fs_path.resolve(pathPrefix, item.InImagePath): '',
+        previewPath: item.InPrevPath ? fs_path.resolve(pathPrefix, item.InPrevPath) : null,
+        name: item.Name
+    }));
 }
 
 const Converter = {
@@ -974,6 +1024,12 @@ const Converter = {
             default:
                 throw '找不到对应的音轨：' + source;
         }
+    },
+    stringToConditionContent: function (source: string): ConditionContent[] {
+        let rawData = source.replace(/\t/g, '').split('\n').map(v => [+v[0], v.substring(1)]);
+        let maxScope = rawData.map(v => +v[0]).reduce((r, v) => v > r ? v : r, 0);
+        rawData.forEach(v => v[0] = maxScope - (+v[0]));
+        return rawData.map(v => ({ content: v[1] + '', scopeIndent: +v[0] ? +v[0] : 0 }));
     }
 };
 

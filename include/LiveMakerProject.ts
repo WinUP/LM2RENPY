@@ -109,13 +109,13 @@ export interface LiveMakerProjectNodeMenu extends LiveMakerProjectNodeBase {
     SoundHover: string;
     SoundSelect: string;
     TimeLimit: string;
-    Cond: "" | {
+    Cond: {
         Item: CondNamePair[];
     };
-    VisibleCond: "" | {
+    VisibleCond: {
         Item: CondNamePair[];
     };
-    SelectedCond: "" | {
+    SelectedCond: {
         Item: CondNamePair[];
     };
 }

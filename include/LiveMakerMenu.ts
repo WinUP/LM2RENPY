@@ -6,17 +6,17 @@ export interface LiveMakerMenu {
 }
 
 export interface LiveMakerMenuItem {
-    Left: string;
-    Top: string;
-    PrevLeft: string;
-    PrevTop: string;
+    Left: number;
+    Top: number;
+    PrevLeft: number;
+    PrevTop: number;
     Path: string;
-    CapMask: string;
-    CapMaskLevel: string;
+    CapMask: number;
+    CapMaskLevel: number;
     Name: string;
-    Group: string;
+    Group: number;
     InImagePath: string;
     InPrevPath: string;
-    DownOnPrevRepeat: string;
-    DownOffPrevRepeat: string;
+    DownOnPrevRepeat: number;
+    DownOffPrevRepeat: number;
 }

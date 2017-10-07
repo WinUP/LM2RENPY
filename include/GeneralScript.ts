@@ -85,6 +85,24 @@ export enum BlockType {
     Exit
 }
 
+export interface BlockMenu {
+    item: BlockMenuItem[];
+    fadeIn: number;
+    fadeOut: number;
+    canCancel: boolean;
+    hoverSound: string;
+    clickSound: string;
+    timeLimitation: number;
+    condition: BlockMenuCondition[];
+    visibleCondition: BlockMenuCondition[];
+    enableCondition: BlockMenuCondition[];
+}
+
+export interface BlockMenuCondition {
+    choice: string;
+    condition: ConditionContent[];
+}
+
 export interface BlockNormal {
     trackHistory: boolean;
     skipLastEmptyLine: boolean;
@@ -467,4 +485,15 @@ export enum EffectType {
     Circle,
     BlockCoil,
     BlockRandom
+}
+
+export interface BlockMenuItem {
+    left: number;
+    top: number;
+    previewLeft: number;
+    previewTop: number;
+    imagePath: string;
+    hoverPath: string;
+    previewPath: string;
+    name: string;
 }
