@@ -1,7 +1,8 @@
 import { PROJECT_RESOURCE_ROOT } from './LiveMakerParser';
 import {
     Project, BlockType, BlockCalculator, CalculatorType, CalculatorImageNewData, CalculatorSoundData, BlockMenu,
-    BlockNormal, CommandType, CommandContentImage, CommandContentChangeImage, CommandContentSound
+    BlockNormal, CommandType, CommandContentImageAnimation, CommandContentChangeImageAnimation,
+    CommandContentSound, Animation
 } from './include/GeneralScript';
 
 export var TranslationKeyword = {
@@ -337,15 +338,23 @@ export function mapUrl(project: Project): Project {
                 let data: BlockNormal = block.data;
                 data.content.forEach(command => {
                     if (command.type == CommandType.Image) {
-                        let commandContent: CommandContentImage = (command.content as CommandContentImage);
-                        console.log(`\t映射图像 ${commandContent.source}`);
-                        commandContent.source = replaceUrl(commandContent.source);
-                        console.log(`\t\t->${commandContent.source}`);
+                        let commandContent: CommandContentImageAnimation = (command.content as CommandContentImageAnimation);
+                        if (!commandContent.animation) {
+                            console.log(`\t映射图像 ${commandContent.source}`);
+                            commandContent.source = replaceUrl(commandContent.source);
+                            console.log(`\t\t->${commandContent.source}`);
+                        } else {
+                            mapAnimation(commandContent);
+                        }
                     } else if (command.type == CommandType.ChangeImage) {
-                        let commandContent: CommandContentChangeImage = (command.content as CommandContentChangeImage);
-                        console.log(`\t映射切图 ${commandContent.source}`);
-                        commandContent.source = replaceUrl(commandContent.source);
-                        console.log(`\t\t->${commandContent.source}`);
+                        let commandContent: CommandContentChangeImageAnimation = (command.content as CommandContentChangeImageAnimation);
+                        if (!commandContent.animation) {
+                            console.log(`\t映射图像 ${commandContent.source}`);
+                            commandContent.source = replaceUrl(commandContent.source);
+                            console.log(`\t\t->${commandContent.source}`);
+                        } else {
+                            mapAnimation(commandContent);
+                        }
                     } else if (command.type == CommandType.Sound) {
                         let commandContent: CommandContentSound = (command.content as CommandContentSound);
                         console.log(`\t映射音频 ${commandContent.source}`);
@@ -358,4 +367,12 @@ export function mapUrl(project: Project): Project {
     });
     console.log('映射完成');
     return project;
+}
+
+function mapAnimation(content: CommandContentImageAnimation | CommandContentChangeImageAnimation): void {
+    content.animation.forEach(anim => {
+        console.log(`\t映射图像 ${anim.source}`);
+        anim.source = replaceUrl(anim.source);
+        console.log(`\t\t->${anim.source}`);
+    });
 }

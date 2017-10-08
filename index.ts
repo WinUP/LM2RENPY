@@ -4,7 +4,6 @@ import * as path from 'path';
 import * as iconv from 'iconv-lite';
 import * as xml2js from 'xml2js';
 import * as UUID from 'uuid';
-//import * as express from "express";
 
 import { parseProject, PROJECT_RESOURCE_ROOT } from './LiveMakerParser';
 import { TranslationKeyword, mapUrl } from './RenpyGenerator';

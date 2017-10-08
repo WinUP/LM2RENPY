@@ -309,6 +309,14 @@ export interface CommandContentText extends CommandContentBase {
     underline?: boolean;
 }
 
+export interface CommandContentImageAnimation extends CommandContentImage {
+    animation: Animation[];
+}
+
+export interface CommandContentChangeImageAnimation extends CommandContentChangeImage {
+    animation: Animation[];
+}
+
 export interface CommandContentEffect extends CommandContentNameTarget {
     type: EffectType;
     reverse: boolean;
@@ -390,6 +398,63 @@ export interface CommandContentChangeImage extends CommandContentNameTarget {
 export interface CommandContentDestroyImage extends CommandContentBase {
     target: string[],
     useFlip: string;
+}
+
+export interface Animation {
+    name: string;
+    source: string;
+    startTime: number;
+    period: number;
+    priority: number;
+    horizontalReverse: boolean;
+    verticalReverse: boolean;
+    center: Point;
+    location?: {
+        start: Point,
+        end: Point,
+        xEase: Ease,
+        yEase: Ease
+    },
+    rotate?: {
+        start: number,
+        end: number,
+        ease: Ease
+    },
+    zoom?: {
+        xStart: number,
+        xEnd: number,
+        yStart: number,
+        yEnd: number,
+        xEase: Ease,
+        yEase: Ease
+    },
+    alpha?: {
+        start: number,
+        end: number,
+        ease: Ease
+    },
+    clip?: {
+        from: Rectangle,
+        to: Rectangle,
+        xEase: Ease,
+        yEase: Ease
+    }
+}
+
+export interface Point {
+    x: number;
+    y: number;
+}
+
+export interface Rectangle extends Point {
+    width: number;
+    height: number;
+}
+
+export enum Ease {
+    None,
+    In,
+    Out
 }
 
 export enum QuakeType {

@@ -8,7 +8,8 @@ import {
     CommandContentTextSpeed, CommandContentNameTarget, CommandContentTimeTarget, CommandContentMovie, RepeatMode,
     CommandContentQuake, QuakeType, Soundtrack, CommandContentSound, CommandContentStopSound, CommandContentChangeVolume,
     CommandContentImage, CommandContentChangeImage, CommandContentDestroyImage, Project, MessageboxFont, Messagebox,
-    ConditionContent, Condition, BlockMenu, BlockMenuCondition, BlockMenuItem
+    ConditionContent, Condition, BlockMenu, BlockMenuCondition, BlockMenuItem, Animation, Point, Rectangle,
+    CommandContentImageAnimation, Ease, CommandContentChangeImageAnimation
 } from './include/GeneralScript';
 import {
     LiveMakerProject, LiveMakerProjectSceneVar, LiveMakerProjectVarItemScope, LiveMakerProjectVarItemType,
@@ -521,30 +522,71 @@ export function convertSceneCode(source: LiveMakerSceneCommand[]): Command[] {
                 content: content
             });
         } else if (original.type == LiveMakerSceneCommandType.IMAGE) {
-            let content: CommandContentImage = {
-                name: original.param['NAME'],
-                source: 'グラフィック\\' + original.param['SOURCE'],
-                x: Converter.stringAlignToAlign(original.param['X']),
-                y: Converter.stringAlignToAlign(original.param['Y']),
-                priority: LiveMakerPriority[original.param['PRIORITY']],
-                useFlip: original.param['FLIP'],
-                mode: Converter.stringModeToRepeatMode(original.param['MODE'])
-            };
-            result.push({
-                type: CommandType.Image,
-                content: content
-            });
+            if (original.param['SOURCE'].endsWith('.gal')) {
+                let content: CommandContentImage = {
+                    name: original.param['NAME'],
+                    source: 'グラフィック\\' + original.param['SOURCE'],
+                    x: Converter.stringAlignToAlign(original.param['X']),
+                    y: Converter.stringAlignToAlign(original.param['Y']),
+                    priority: LiveMakerPriority[original.param['PRIORITY']],
+                    useFlip: original.param['FLIP'],
+                    mode: Converter.stringModeToRepeatMode(original.param['MODE'])
+                };
+                result.push({
+                    type: CommandType.Image,
+                    content: content
+                });
+            } else if (original.param['SOURCE'].endsWith('.lcm') || original.param['SOURCE'].endsWith('.lmt')) {
+                let path = fs_path.resolve(PROJECT_RESOURCE_ROOT, 'グラフィック', original.param['SOURCE']);
+                console.log(`\t\t -> 动画文件 ${path}`);
+                let animation = parseAnimation(path);
+                let content: CommandContentImageAnimation = {
+                    name: original.param['NAME'],
+                    source: 'グラフィック\\' + original.param['SOURCE'],
+                    x: Converter.stringAlignToAlign(original.param['X']),
+                    y: Converter.stringAlignToAlign(original.param['Y']),
+                    priority: LiveMakerPriority[original.param['PRIORITY']],
+                    useFlip: original.param['FLIP'],
+                    mode: Converter.stringModeToRepeatMode(original.param['MODE']),
+                    animation: animation
+                };
+                result.push({
+                    type: CommandType.Image,
+                    content: content
+                });
+            } else {
+                throw '找不到文件格式处理器：' + original.param['SOURCE']
+            }
         } else if (original.type == LiveMakerSceneCommandType.CHGIMG) {
-            let content: CommandContentChangeImage = {
-                name: original.param['NAME'],
-                source: 'グラフィック\\' + original.param['SOURCE'],
-                useFlip: original.param['FLIP'],
-                mode: Converter.stringModeToRepeatMode(original.param['MODE'])
-            };
-            result.push({
-                type: CommandType.ChangeImage,
-                content: content
-            });
+            if (original.param['SOURCE'].endsWith('.gal')) {
+                let content: CommandContentChangeImage = {
+                    name: original.param['NAME'],
+                    source: 'グラフィック\\' + original.param['SOURCE'],
+                    useFlip: original.param['FLIP'],
+                    mode: Converter.stringModeToRepeatMode(original.param['MODE'])
+                };
+                result.push({
+                    type: CommandType.ChangeImage,
+                    content: content
+                });
+            } else if (original.param['SOURCE'].endsWith('.lcm') || original.param['SOURCE'].endsWith('.lmt')) {
+                let path = fs_path.resolve(PROJECT_RESOURCE_ROOT, 'グラフィック', original.param['SOURCE']);
+                console.log(`\t\t -> 动画文件 ${path}`);
+                let animation = parseAnimation(path);
+                let content: CommandContentChangeImageAnimation = {
+                    name: original.param['NAME'],
+                    source: 'グラフィック\\' + original.param['SOURCE'],
+                    useFlip: original.param['FLIP'],
+                    mode: Converter.stringModeToRepeatMode(original.param['MODE']),
+                    animation: animation
+                };
+                result.push({
+                    type: CommandType.ChangeImage,
+                    content: content
+                });
+            } else {
+                throw '找不到文件格式处理器：' + original.param['SOURCE']
+            }
         } else if (original.type == LiveMakerSceneCommandType.DELIMG) {
             let content: CommandContentDestroyImage = {
                 target: original.param['NAME'].split(','),
@@ -556,6 +598,108 @@ export function convertSceneCode(source: LiveMakerSceneCommand[]): Command[] {
             });
         }
         i++;
+    }
+    return result;
+}
+
+export function parseAnimation(source: string): Animation[] {
+    let pathPrefix = source.substring(0, source.lastIndexOf('\\'));
+    let origin = fs.readFileSync(source);
+    let fileCount = origin.readInt32LE(0x26);
+    let offset = 0x2f;
+    let result: Animation[] = new Array<Animation>();
+    for (let i = 0; i < fileCount; i++) {
+        let animation: Animation = {} as Animation;
+        animation.period = origin.readInt32LE(offset) / 60;
+        offset += 8;
+        animation.startTime = origin.readInt32LE(offset) / 60;
+        offset += 8;
+        animation.priority = origin.readInt32LE(offset);
+        offset += 4;
+        animation.horizontalReverse = origin.readInt8(offset) != 0;
+        offset += 1;
+        animation.verticalReverse = origin.readInt8(offset) != 0;
+        offset += 2;
+        let nameLength = origin.readInt32LE(offset);
+        offset += 4;
+        let nameBuffer = new Buffer(nameLength);
+        for (let j = 0; j < nameLength; j++)
+            nameBuffer[j] = origin[offset + j]
+        animation.name = iconv.decode(nameBuffer, 'shift-jis');
+        offset += nameLength;
+        animation.center = {
+            x: origin.readInt32LE(offset),
+            y: origin.readInt32LE(offset + 4)
+        }
+        offset += 8;
+        animation.location = {
+            start: {
+                x: origin.readInt32LE(offset),
+                y: origin.readInt32LE(offset + 4)
+            },
+            end: {
+                x: origin.readInt32LE(offset + 8),
+                y: origin.readInt32LE(offset + 12)
+            },
+            xEase: origin.readInt8(offset + 13),
+            yEase: origin.readInt8(offset + 14)
+        };
+        offset += 18;
+        animation.rotate = {
+            start: origin.readDoubleLE(offset),
+            end: origin.readDoubleLE(offset + 8),
+            ease: Ease.None
+        };
+        offset += 16;
+        animation.zoom = {
+            xStart: origin.readDoubleLE(offset),
+            xEnd: origin.readDoubleLE(offset + 8),
+            xEase: origin.readInt8(offset + 16),
+            yStart: 0,
+            yEnd: 0,
+            yEase: Ease.None
+        };
+        offset += 17;
+        animation.alpha = {
+            start: origin.readInt32LE(offset),
+            end: origin.readInt32LE(offset + 4),
+            ease: Ease.None
+        };
+        offset += 8;
+        animation.rotate.ease = origin.readInt8(offset);
+        offset += 1;
+        animation.clip = {
+            from: {
+                x: origin.readInt32LE(offset),
+                y: origin.readInt32LE(offset + 4),
+                width: origin.readInt32LE(offset + 8),
+                height: origin.readInt32LE(offset + 12),
+            },
+            to: {
+                x: origin.readInt32LE(offset + 16),
+                y: origin.readInt32LE(offset + 20),
+                width: origin.readInt32LE(offset + 24),
+                height: origin.readInt32LE(offset + 28)
+            },
+            xEase: origin.readInt8(offset + 32),
+            yEase: origin.readInt8(offset + 33),
+        }
+        offset += 34;
+        animation.zoom.yStart = origin.readDoubleLE(offset);
+        offset += 8;
+        animation.zoom.yEnd = origin.readDoubleLE(offset);
+        offset += 8;
+        animation.zoom.yEase = origin.readInt8(offset);
+        offset += 17;
+        let urlLength = origin.readInt32LE(offset);
+        offset += 4;
+        let urlBuffer = new Buffer(urlLength);
+        for (let j = 0; j < urlLength; j++)
+            urlBuffer[j] = origin[offset + j]
+        animation.source = iconv.decode(urlBuffer, 'shift-jis');
+        offset += urlLength;
+        offset += 5;
+        result.push(animation);
     }
     return result;
 }
