@@ -696,7 +696,7 @@ export function parseAnimation(source: string): Animation[] {
         let urlBuffer = new Buffer(urlLength);
         for (let j = 0; j < urlLength; j++)
             urlBuffer[j] = origin[offset + j]
-        animation.source = iconv.decode(urlBuffer, 'shift-jis');
+        animation.source = fs_path.resolve(pathPrefix, iconv.decode(urlBuffer, 'shift-jis'));
         offset += urlLength;
         offset += 5;
         result.push(animation);

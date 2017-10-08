@@ -271,7 +271,7 @@ export var TranslationKeyword = {
     '思考': 'Thinking'
 }
 
-export function replaceUrl(source: string): string {
+function replaceUrl(source: string): string {
     if (!source) return source;
     let result = source;
     Object.keys(TranslationKeyword).forEach(v => {
@@ -281,7 +281,7 @@ export function replaceUrl(source: string): string {
     return result;
 }
 
-export function convertUrl(source: string): string {
+function convertUrl(source: string): string {
     if (!source) return source;
     let result = source;
     result = result.replace(new RegExp(PROJECT_RESOURCE_ROOT.replace(/\\/g, '\\\\'), 'g'), '');
