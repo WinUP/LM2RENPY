@@ -123,7 +123,7 @@ export interface BlockJump {
 
 export interface BlockNavigator {
     target: number;
-    targetPage: string;
+    targetPage?: SystemPage;
 }
 
 export interface BlockCalculator {
@@ -561,4 +561,14 @@ export interface BlockMenuItem {
     hoverPath: string;
     previewPath: string;
     name: string;
+}
+
+export enum SystemPage {
+    Load,
+    Save,
+    Gallery,
+    Event,
+    Soundtrack,
+    MainMenu,
+    GameMenu
 }

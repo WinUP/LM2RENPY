@@ -1,14 +1,13 @@
-import * as fs from 'fs';
-import * as fs_extra from 'fs-sync';
-import * as path from 'path';
 import * as iconv from 'iconv-lite';
 import * as xml2js from 'xml2js';
-import * as UUID from 'uuid';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import { parseProject, PROJECT_RESOURCE_ROOT } from './LiveMakerParser';
-import { TranslationKeyword, mapUrl } from './RenpyGenerator';
+import { TranslationKeyword, mapUrl, mapVariable } from './RenpyMapper';
+import { generateRenpyCode } from './RenpyGenerator';
 import { LiveMakerProject } from './include/LiveMakerProject';
-import { Project } from './include/GeneralScript';
+import { Project, BlockType, BlockCalculator } from './include/GeneralScript';
 
 //function replaceName(root: string): void {
 //    let children = fs.readdirSync(root);
@@ -26,19 +25,28 @@ import { Project } from './include/GeneralScript';
 //replaceName('C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\images');
 //replaceName('C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\sound');
 
+const TARGET_CODE_ROOT = 'C:\\LocalFileSystem\\LiveMaker Viewer\\code';
+
 let str = iconv.decode(fs.readFileSync('data/novel.prj'), 'shift-jis');
 let project: Project = null;
 
 xml2js.parseString(str, { explicitArray : false, ignoreAttrs : false }, (err, result) => {
-    console.log('LiverMaker工程转换器 ©2017 同人社团GILESFVK ËKITES');
-    console.log('GNU LESSER GENERAL PUBLIC LICENSE Version 3');
-    project = parseProject(result.Project);
-    fs.writeFileSync('general_script.txt', JSON.stringify(project, null, 2));
-    console.log(`通用脚本文件已保存至general_script.txt（${fs.statSync('general_script.txt').size}字节）`);
-    console.log('');
-    project = mapUrl(project);
-    fs.writeFileSync('project_structure.txt', JSON.stringify(project, null, 2));
-    console.log(`Ren'Py工程映射文件已保存至project_structure.txt（${fs.statSync('project_structure.txt').size}字节）`);
+    //console.log('LiverMaker工程转换器 ©2017 同人社团GILESFVK ËKITES');
+    //console.log('GNU LESSER GENERAL PUBLIC LICENSE Version 3');
+    //console.log(`资源文件引用目录：${PROJECT_RESOURCE_ROOT}`);
+    //project = parseProject(result.Project);
+    //fs.writeFileSync('general_script.txt', JSON.stringify(project, null, 2));
+    //console.log(`通用脚本文件已保存至general_script.txt（${fs.statSync('general_script.txt').size}字节）`);
+    //console.log('');
+    //project = mapUrl(project);
+    //project = mapVariable(project);
+    //fs.writeFileSync('project_structure.txt', JSON.stringify(project, null, 2));
+    //console.log(`Ren'Py工程映射文件已保存至project_structure.txt（${fs.statSync('project_structure.txt').size}字节）`);
+    console.log('使用缓存文件');
+    project = JSON.parse(fs.readFileSync('project_structure.txt').toString());
+    console.log('生成Ren\'Py代码……');
+    console.log(`目标文件夹：${TARGET_CODE_ROOT}`);
+    generateRenpyCode(project, TARGET_CODE_ROOT);
 });
 
 /** 以下代码是手动转换部分数据时使用的自动生成代码，现已无用 */

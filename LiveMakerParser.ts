@@ -9,7 +9,7 @@ import {
     CommandContentQuake, QuakeType, Soundtrack, CommandContentSound, CommandContentStopSound, CommandContentChangeVolume,
     CommandContentImage, CommandContentChangeImage, CommandContentDestroyImage, Project, MessageboxFont, Messagebox,
     ConditionContent, Condition, BlockMenu, BlockMenuCondition, BlockMenuItem, Animation, Point, Rectangle,
-    CommandContentImageAnimation, Ease, CommandContentChangeImageAnimation
+    CommandContentImageAnimation, Ease, CommandContentChangeImageAnimation, SystemPage
 } from './include/GeneralScript';
 import {
     LiveMakerProject, LiveMakerProjectSceneVar, LiveMakerProjectVarItemScope, LiveMakerProjectVarItemType,
@@ -23,6 +23,7 @@ import {
     LiveMakerPriority
 } from './include/LiveMakerSceneCode';
 import { LiveMakerMenu, LiveMakerMenuItem } from './include/LiveMakerMenu';
+import { toLiveMakerHexName } from './Utilities';
 
 import * as _ from 'lodash';
 import * as fs from 'fs';
@@ -98,7 +99,7 @@ export function parseProject(source: LiveMakerProject): Project {
             bootstrap: null,
             block: []
         };
-        console.log(`\n场景 ${fixNumber((+liveScene.ID).toString(16).toUpperCase(), 8)}（${liveScene.Caption}）`);
+        console.log(`\n场景 ${toLiveMakerHexName(+liveScene.ID)}（${liveScene.Caption}）`);
         liveScene.Node.Item.forEach(node => {
             totalNodeCount++;
             let block: Block<any> = {
@@ -108,7 +109,7 @@ export function parseProject(source: LiveMakerProject): Project {
                 next: [],
                 data: null
             };
-            console.log(`\t[节点] ${fixNumber((+node.ID).toString(16).toUpperCase(), 8)}（${node.Caption}）`);
+            console.log(`\t[节点] ${toLiveMakerHexName(+node.ID)}（${node.Caption}）`);
             if (block.type == BlockType.Calculator) {
                 let realNode: LiveMakerProjectNodeCalc = node as LiveMakerProjectNodeCalc;
                 block.data = {
@@ -195,9 +196,16 @@ export function parseProject(source: LiveMakerProject): Project {
             } else if (block.type == BlockType.Navigator) {
                 let realNode: LiveMakerProjectNodeNavigate = node as LiveMakerProjectNodeNavigate;
                 block.data = {
-                    target: +realNode.Target,
-                    targetPage: (realNode.TargetPage && realNode.TargetPage != '') ? realNode.TargetPage : null
+                    target: +realNode.Target
                 } as BlockNavigator;
+                if (realNode.TargetPage && realNode.TargetPage != '') {
+                    if (realNode.TargetPage == 'ロード')
+                        block.data.targetPage = SystemPage.Load;
+                    else if (realNode.TargetPage == 'セーブ')
+                        block.data.targetPage = SystemPage.Save;
+                    else if (realNode.TargetPage == 'ＣＧモード')
+                        block.data.targetPage = SystemPage.Gallery;
+                }
             } else if (block.type == BlockType.Normal) {
                 let realNode: LiveMakerProjectNodeScene = node as LiveMakerProjectNodeScene;
                 block.data = {
@@ -205,7 +213,7 @@ export function parseProject(source: LiveMakerProject): Project {
                     skipLastEmptyLine: Converter.booleanStringToBoolean(realNode.NotCaret),
                     content: null
                 } as BlockNormal;
-                let path = `data/${fixNumber((+realNode.ID).toString(16).toUpperCase(), 8)}.lns`;
+                let path = `data/${toLiveMakerHexName(+realNode.ID)}.lns`;
                 console.log(`\t\t -> 内容文件 ${path}`);
                 let content: string = '';
                 if (fs.existsSync(path))
@@ -1177,11 +1185,3 @@ const Converter = {
     }
 };
 
-function fixNumber(num,length){
-    let numstr = num.toString();
-    let l = numstr.length;
-    if (numstr.length>=length) return numstr;
-    for(let i = 0 ; i < length - l ; i++)
-        numstr = "0" + numstr;  
-    return numstr; 
-}
