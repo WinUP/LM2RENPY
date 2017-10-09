@@ -25,7 +25,7 @@ import { Project, BlockType, BlockCalculator } from './include/GeneralScript';
 //replaceName('C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\images');
 //replaceName('C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\sound');
 
-const TARGET_CODE_ROOT = 'C:\\LocalFileSystem\\LiveMaker Viewer\\code';
+const TARGET_CODE_ROOT = 'C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\livemaker';
 
 let str = iconv.decode(fs.readFileSync('data/novel.prj'), 'shift-jis');
 let project: Project = null;

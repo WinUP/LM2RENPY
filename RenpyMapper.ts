@@ -539,6 +539,16 @@ export function mapUrl(project: Project): Project {
                 });
             } else if (block.type == BlockType.Menu) {
                 let data: BlockMenu = block.data;
+                if (data.clickSound) {
+                    console.log(`\t映射选单音效 ${data.clickSound}`);
+                    data.clickSound = replaceUrl(data.clickSound);
+                    console.log(`\t\t -> ${data.clickSound}`);
+                }
+                if (data.hoverSound) {
+                    console.log(`\t映射滑过音效 ${data.hoverSound}`);
+                    data.hoverSound = replaceUrl(data.hoverSound);
+                    console.log(`\t\t -> ${data.hoverSound}`);
+                }
                 data.item.forEach(item => {
                     if (item.imagePath) {
                         console.log(`\t映射选单按钮 ${item.imagePath}`);
@@ -648,10 +658,11 @@ export function mapVariable(project: Project): Project {
     });
     return project;
 };
+
 function mapAnimation(content: CommandContentImageAnimation | CommandContentChangeImageAnimation): void {
     content.animation.forEach(anim => {
         console.log(`\t映射图像 ${anim.source}`);
         anim.source = replaceUrl(anim.source);
-        console.log(`\t\t->${anim.source}`);
+        console.log(`\t\t -> ${anim.source}`);
     });
 }

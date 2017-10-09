@@ -325,12 +325,12 @@ class RenpyFile {
      * 定义一个变量
      * @param variable 
      */
-    public define(variable: GS.Variable<any>): void {
+    public define(variable: GS.Variable<any>, singlePythonLine: boolean = false): void {
         variable = Utilities.normalizeVariableValue(variable);
         if (variable.scope == GS.VariableScope.Static)
-            this.line(`persistent.${variable.name} = ${variable.value}`);
+            this.line(`${singlePythonLine ? '$ ' : ''}persistent.${variable.name} = ${variable.value}`);
         else
-            this.line(`${variable.name} = ${variable.value}`);
+            this.line(`${singlePythonLine ? '$ ' : ''}${variable.name} = ${variable.value}`);
     }
 
     /**
@@ -372,10 +372,20 @@ class RenpyFile {
             throw '找不到指定的系统场景：' + name;
     }
 
+    /**
+     * 添加一个LiveMaker图像菜单调用
+     * @param items 菜单项
+     * @param condition 显示条件
+     * @param fadeIn 淡入时间
+     * @param fadeOut 淡出时间
+     * @param clickSound 点击时的音效
+     * @param hoverSound 鼠标滑过时的音效
+     * @param timeLimit 时间限制
+     */
     public liveMenu(items: GS.BlockMenuItem[], condition: GS.BlockMenuCondition[], fadeIn?: number, fadeOut?: number, clickSound?: string, hoverSound?: string, timeLimit?: number): void {
         let usedCondition: GS.BlockMenuCondition[] = new Array<GS.BlockMenuCondition>();
-        let result = 'call screen lm_menu(';
-        result += '[' + items.map((item, index) => {
+        let result: string = '[';
+        result += items.map((item, index) => {
             let result: string[] = new Array<string>();
             result.push(`"pos": (${item.left}, ${item.top})`);
             result.push(`"image": "${item.imagePath}"`);
@@ -389,23 +399,27 @@ class RenpyFile {
                 result.push('"condition": [' + cond.condition.map(v => `{ "scope": ${v.scopeIndent}, "content": "${v.content}" }`).join(',') + ']');
             }
             return `{${result.join(',')}}`;
-        }).join(',') + ']';
-        result += ', ';
-        let sound = '{';
-        sound += hoverSound ? `"hover": "${hoverSound}"` : '';
-        sound += ', ';
-        sound += clickSound ? `"click": "${clickSound}"` : '';
-        sound += '}';
-        result += sound;
+        }).join(', ');
+        result += ']';
+        this.python(`_lm_menu_item = ${result}`);
+        let soundInfo: string[] = new Array<string>();
+        if (hoverSound)
+            soundInfo.push(`"hover": "${hoverSound}"`);
+        if (clickSound)
+        soundInfo.push(`"click": "${clickSound}"`);
+        result = `{${soundInfo.join(', ')}}`;
+        if (clickSound || hoverSound)
+            this.python(`_lm_menu_sound = ${result}`);
         if (timeLimit)
-            result += `, ${timeLimit})`;
+            result = `, ${timeLimit})`;
         else
-            result += ')';
+            result = ', 0)';
         if (fadeIn)
-            result += ` with Dissolve(${fadeIn})`;
-        this.line(result);
-        if (fadeOut)
-            this.line(`with Dissolve(${fadeOut})`);
+            this.python(`renpy.transition(Dissolve(${fadeIn}))`);
+        this.line(`call screen lm_menu(_lm_menu_item, _lm_menu_sound${result}`);
+        // fadeOut目前对带参数screen不起作用
+        //if (fadeOut)
+        //    this.line(`with Dissolve(${fadeOut})`);
         this.python('_lm_selected_value = _result["name"]');
         this.python('_lm_selected_index = _result["index"]');
     }
