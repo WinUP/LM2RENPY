@@ -136,7 +136,7 @@ export interface BlockChoice {
     cancelable: boolean;
     hoverSound: string;
     selectSound: string;
-    time: string;
+    time: number | Animation[];
     positionX: Align | number;
     positionY: Align | number;
     align: Align;

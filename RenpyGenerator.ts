@@ -1,4 +1,3 @@
-import * as UUID from 'uuid';
 import * as Path from 'path';
 import * as File from 'fs';
 
@@ -322,15 +321,34 @@ class RenpyFile {
     }
 
     /**
+     * 添加一个条件选择语句，并自动缩进一次
+     * @param condition 条件
+     */
+    public if(condition: string): void {
+        this.line(`if ${condition}:`);
+        this.indent();
+    }
+
+    /**
      * 定义一个变量
      * @param variable 
      */
     public define(variable: GS.Variable<any>, singlePythonLine: boolean = false): void {
         variable = Utilities.normalizeVariableValue(variable);
-        if (variable.scope == GS.VariableScope.Static)
+        if (variable.scope == GS.VariableScope.Static) {
+            this.if(`persistent.${variable.name} == None`);
             this.line(`${singlePythonLine ? '$ ' : ''}persistent.${variable.name} = ${variable.value}`);
-        else
+            this.unindent();
+        } else
             this.line(`${singlePythonLine ? '$ ' : ''}${variable.name} = ${variable.value}`);
+    }
+
+    public undefine(variable: GS.Variable<any>, singlePythonLine: boolean = false): void {
+        variable = Utilities.normalizeVariableValue(variable);
+        if (variable.scope == GS.VariableScope.Static)
+            this.line(`${singlePythonLine ? '$ ' : ''}persistent.${variable.name} = None`);
+        else
+            this.line(`${singlePythonLine ? '$ ' : ''}${variable.name} = None`);
     }
 
     /**
@@ -407,21 +425,162 @@ class RenpyFile {
             soundInfo.push(`"hover": "${hoverSound}"`);
         if (clickSound)
         soundInfo.push(`"click": "${clickSound}"`);
-        result = `{${soundInfo.join(', ')}}`;
         if (clickSound || hoverSound)
-            this.python(`_lm_menu_sound = ${result}`);
-        if (timeLimit)
-            result = `, ${timeLimit})`;
+            this.python(`_lm_menu_sound = {${soundInfo.join(', ')}}`);
         else
-            result = ', 0)';
+            this.python('_lm_menu_sound = {}');
         if (fadeIn)
             this.python(`renpy.transition(Dissolve(${fadeIn}))`);
-        this.line(`call screen lm_menu(_lm_menu_item, _lm_menu_sound${result}`);
+        this.line(`call screen lm_menu(_lm_menu_item, _lm_menu_sound, ${timeLimit ? timeLimit : 0})`);
         // fadeOut目前对带参数screen不起作用
         //if (fadeOut)
         //    this.line(`with Dissolve(${fadeOut})`);
-        this.python('_lm_selected_value = _result["name"]');
-        this.python('_lm_selected_index = _result["index"]');
+        this.python('_lm_selected_value = _return["name"]');
+        this.python('_lm_selected_index = _return["index"]');
+    }
+
+    /**
+     * 添加一个LiveMaker输入调用
+     * @param items 需要用户输入的项目
+     * @param caption 标题
+     */
+    public lmInput(items: GS.Input[], caption: string): void {
+        let itemPrompt = items.map(v => `"${v.title}"`).join(', ');
+        let itemTarget = items.map(v => v.targetVariable).join(', ');
+        this.python(`_lm_input_result = lm_input("${caption}", [${itemPrompt}], [${itemTarget}])`);
+        for (let i = 0; i < items.length; i++)
+            this.python(`${items[i].targetVariable} = _lm_input_result[${i}]`);
+    }
+
+    /**
+     * 插入一个LiveMaker选择调用
+     * @param items 选项
+     * @param hoverSound 鼠标滑过时的音效
+     * @param clickSound 点击时的音效
+     * @param timeLimit 时间限制
+     */
+    public lmChoice(items: GS.Choice[], hoverSound?: string, clickSound?: string, timeLimit?: number): void {
+        let itemTitle = items.map(v => `"${v.title}"`).join(', ');
+        this.python(`_lm_choice_item = [${itemTitle}]`);
+        let soundInfo: string[] = new Array<string>();
+        if (hoverSound)
+            soundInfo.push(`"hover": "${hoverSound}"`);
+        if (clickSound)
+        soundInfo.push(`"click": "${clickSound}"`);
+        if (clickSound || hoverSound)
+            this.python(`_lm_choice_sound = {${soundInfo.join(', ')}}`);
+        else
+            this.python('_lm_choice_sound = {}');
+        this.line(`call screen lm_choice(_lm_choice_item, _lm_choice_sound, ${timeLimit ? timeLimit : 0})`);
+        this.python('_lm_selected_value = _return');
+    }
+
+    /**
+     * 插入一个图像动画
+     * @param item 动画对象
+     */
+    public animation(item: GS.Animation): string {
+        let name = this.image(item.name, item.source, item.priority, item.horizontalReverse, item.verticalReverse, true);
+        this.line(`xanchor ${item.center.x}`);
+        this.line(`yanchor ${item.center.y}`);
+        this.line(`xpos ${item.location.start.x}`);
+        this.line(`ypos ${item.location.start.y}`);
+        if (item.rotate.start != 0)
+            this.line(`rotate ${item.rotate.start}`);
+        if (item.zoom.xStart != 1)
+            this.line(`xzoom ${item.zoom.xStart}`);
+        if (item.zoom.yStart != 1)
+            this.line(`yzoom ${item.zoom.yStart}`);
+        if (item.startTime > 0) {
+            this.line('alpha 0');
+            this.pause(item.startTime);
+        }
+        this.line(`alpha ${1.0 - item.alpha.start / 255}`);
+        if (item.location.start.x != item.location.end.x) {;
+            this.line('parallel:');
+            this.indent();
+            this.line(`${this.findAnimationEase(item.location.xEase)} ${item.period} xpos ${item.location.end.x}`);
+            this.unindent();
+        }
+        if (item.location.start.y != item.location.end.y) {
+            this.line('parallel:');
+            this.indent();
+            this.line(`${this.findAnimationEase(item.location.yEase)} ${item.period} ypos ${item.location.end.y}`);
+            this.unindent();
+        }
+        if (item.rotate.start != item.rotate.end) {
+            this.line('parallel:');
+            this.indent();
+            this.line(`${this.findAnimationEase(item.rotate.ease)} ${item.period} rotate ${item.rotate.end}`);
+            this.unindent();
+        }
+        if (item.zoom.xStart != item.zoom.xEnd) {
+            this.line('parallel:');
+            this.indent();
+            this.line(`${this.findAnimationEase(item.zoom.xEase)} ${item.period} xzoom ${item.zoom.xEnd}`);
+            this.unindent();
+        }
+        if (item.zoom.yStart != item.zoom.yEnd) {
+            this.line('parallel:');
+            this.indent();
+            this.line(`${this.findAnimationEase(item.zoom.yEase)} ${item.period} yzoom ${item.zoom.yEnd}`);
+            this.unindent();
+        }
+        if (item.alpha.start != item.alpha.end) {
+            this.line('parallel:');
+            this.indent();
+            this.line(`${this.findAnimationEase(item.alpha.ease)} ${item.period} alpha ${1.0 - item.alpha.end / 255}`);
+            this.unindent();
+        }
+        if (item.clip.from.x != item.clip.to.x || item.clip.from.y != item.clip.to.y || item.clip.from.width != item.clip.to.width || item.clip.from.height !+ item.clip.to.height) {
+            this.line(`crop (${item.clip.from.x}, ${item.clip.from.y}, ${item.clip.from.width}, ${item.clip.from.height})`);
+            this.line('parallel:');
+            this.indent();
+            this.line(`${this.findAnimationEase(item.clip.xEase || item.clip.yEase)} ${item.period} crop (${item.clip.to.x}, ${item.clip.to.y}, ${item.clip.to.width}, ${item.clip.to.height})`);
+            this.unindent();
+        }
+        this.pause(item.period);
+        this.line('alpha 0');
+        this.unindent();
+        return name;
+    }
+
+    public image(name: string, source: string, zorder: number = 0, horizontalFlip: boolean = false, verticalFlip: boolean = false, withBlock: boolean = false): string {
+        name = `lmp_${name}_${Utilities.newUUID()}`;
+        let param: string[] = new Array<string>();
+        if (horizontalFlip)
+            param.push(`horizontal=True`);
+        if (verticalFlip)
+            param.push(`vertical=True`);
+        if (horizontalFlip || verticalFlip)
+            this.line(`image ${name} = im.Flip("${source}", ${param.join(', ')})`);
+        else
+            this.line(`image ${name} = "${source}"`);
+        if (withBlock) {
+            this.line(`show ${name} zorder ${zorder}:`);
+            this.indent();
+        } else
+            this.line(`show ${name} zorder ${zorder}`);
+        return name;
+    }
+
+    /**
+     * 插入一个暂停标记
+     * @param time 暂停时间
+     */
+    public pause(time: number = 0): void {
+        if (time == 0)
+            this.line('pause');
+        else
+            this.line(`pause ${time}`);
+    }
+
+    /**
+     * 隐藏一个对象
+     * @param name 对象名称
+     */
+    public hide(name: string): void {
+        this.line(`hide ${name}`);
     }
 
     /**
@@ -436,6 +595,15 @@ class RenpyFile {
      */
     public save(): void {
         File.writeFileSync(Path.resolve(RenpyFile.basePath, this.name + '.rpy'), this._line.join('\n') + '\n');
+    }
+
+    private findAnimationEase(item: GS.Ease): string {
+        if (item == GS.Ease.In)
+            return 'easein';
+        if (item == GS.Ease.Out)
+            return 'easeout';
+        else
+            return 'linear';
     }
 }
 
@@ -473,14 +641,19 @@ function saveBlock(block: GS.Block<any>, project: GS.Project, scene: GS.Scene, f
     file.line();
     file.label(nodeCode);
     file.comment(`Original LiveMaker node: ${nodeCode} (${block.name})`);
-    if (block.id == scene.bootstrap && scene.variable.length > 0) {
+    if (block.type == GS.BlockType.SceneStart && scene.variable.length > 0) {
         file.pythonBlock();
         scene.variable.forEach(variable => {
             file.define(variable);
         });
         file.unindent();
-    }
-    if (block.type == GS.BlockType.Jump) {
+    } else if (block.type == GS.BlockType.SceneEnd && scene.variable.length > 0) {
+        file.pythonBlock();
+        scene.variable.forEach(variable => {
+            file.undefine(variable);
+        });
+        file.unindent();
+    } else if (block.type == GS.BlockType.Jump) {
         let data: GS.BlockJump = block.data;
         for (let i = 0; i < project.scene.length; i++) {
             if (project.scene[i].id != data.target) continue;
@@ -510,7 +683,28 @@ function saveBlock(block: GS.Block<any>, project: GS.Project, scene: GS.Scene, f
                       data.hoverSound,
                       data.timeLimitation > 0 ? data.timeLimitation / 1000 : null);
     } else if (block.type == GS.BlockType.Input) {
-
+        let data: GS.BlockInput = block.data;
+        file.lmInput(data.content, data.title);
+    } else if (block.type == GS.BlockType.Choice) {
+        let data: GS.BlockChoice = block.data;
+        if (data.time instanceof Object) {
+            let animations: GS.Animation[] = data.time as GS.Animation[];
+            let endtime: number = 0;
+            let nameList: string[] = new Array<string>();
+            animations.forEach(animation => {
+                if (animation.startTime + animation.period > endtime)
+                    endtime = animation.startTime + animation.period;
+                nameList.push(file.animation(animation));
+            });
+            file.lmChoice(data.choice, data.hoverSound, data.selectSound, endtime);
+            nameList.forEach(name => {
+                file.hide(name);
+            });
+        } else {
+            file.lmChoice(data.choice, data.hoverSound, data.selectSound, data.time);
+        }
+    } else if (block.type == GS.BlockType.Calculator) {
+        
     }
     file.return();
     file.unindent();

@@ -3,7 +3,7 @@ import {
     Project, BlockType, BlockCalculator, CalculatorType, CalculatorImageNewData, CalculatorSoundData, BlockMenu,
     BlockNormal, CommandType, CommandContentImageAnimation, CommandContentChangeImageAnimation,
     CommandContentSound, Animation, CalculatorCalcData, CommandContentNameTarget, CalculatorContinueData,
-    CalculatorVarDelData, CalculatorWhileData, 
+    CalculatorVarDelData, CalculatorWhileData, BlockInput, BlockChoice
 } from './include/GeneralScript';
 
 export var TranslationKeyword = {
@@ -63,6 +63,47 @@ export var TranslationKeyword = {
     '普通月だんじり': 'Normal',
     '喜月だんじり': 'Happy',
 
+    '朔しのぶメイド': 'Nori-Shinobu-in-cafe',
+    'パンツしのぶ': 'Shinobu_underwear',
+    'さくつば': 'Sakuya-Tsubasa',
+    'つばさたち絵': 'Tsubasa_tachie',
+    'つばさ友': 'Tsubasa-Tomo',
+    'ツンデレ処方': 'Drug-for-tsundere',
+    'にそう': 'Parallel-boats',
+    'パンツつばさ': 'Tsubasa_underwear',
+    'パンツ空': 'Sora_underwear',
+    'パンツ三朗': 'Saburo_underwear',
+    'パンツ慎太郎': 'Shintaro_underwear',
+    'パンツ友': 'Tomo_underwear',
+    'パンツ月': 'Tsuki_underwear',
+    'パンツ作哉': 'Sakuya_underwear',
+    'ユウヒ漫画': 'Yuuhi-quest',
+    'ワンニャン': 'Story-of-wong-mew',
+    '常磐九尾': 'Tokiwa-Kyubi',
+    '岡島兄弟': 'Okajima-brothers',
+    '晦朔': 'Kai-Nori',
+    '加藤たち絵': 'Katou_tachie',
+    '空たち絵': 'Sora_tachie',
+    '狼屋敷': 'Welcome-to-wolfs-celemony',
+    '木村たち絵': 'Kimura_tachie',
+    '南小林たち絵': 'Minami-Kobayashi_tachie',
+    '三朗たち絵': 'Saburo_tachie',
+    '慎太郎たち絵': 'Shintaro_tachie',
+    '双子たち絵': 'Akamine-brothers_tachie',
+    '四朗たち絵': 'Shiro_tachie',
+    '相撲ラーメン': 'Let-us-sumo-together 1',
+    '小学生組': 'Tomo-Sakase-Shinobu_primary_school',
+    '伊藤たち絵': 'Itou_tachie',
+    '友たち絵': 'Tomo_tachie',
+    '月たち絵': 'Tsuki_tachie',
+    '月木村相撲': 'Let-us-sumo-together 2',
+    '運動会２': 'Sports-celemony 2',
+    '運動会': 'Sports-celemony 1',
+    '中山清たち絵': 'Nakayama-Kiyo_tachie',
+    '中山兄弟': 'Nakayama-brothers',
+    '作哉たち絵': 'Sakuya_tachie',
+    'しのぶ': 'Shinobu',
+
     'ある雨の日': 'G40-1',
     'イラズラ': 'G170-3',
     'ケーキ': 'G210-3',
@@ -104,47 +145,6 @@ export var TranslationKeyword = {
     '嫌われた！？': 'G160-2',
     '学ランパーカー': 'G170-6',
     '仲間に感謝！': 'G210-4',
-    
-    '朔しのぶメイド': 'Nori-Shinobu-in-cafe',
-    'パンツしのぶ': 'Shinobu_underwear',
-    'さくつば': 'Sakuya-Tsubasa',
-    'つばさたち絵': 'Tsubasa_tachie',
-    'つばさ友': 'Tsubasa-Tomo',
-    'ツンデレ処方': 'Drug-for-tsundere',
-    'にそう': 'Parallel-boats',
-    'パンツつばさ': 'Tsubasa_underwear',
-    'パンツ空': 'Sora_underwear',
-    'パンツ三朗': 'Saburo_underwear',
-    'パンツ慎太郎': 'Shintaro_underwear',
-    'パンツ友': 'Tomo_underwear',
-    'パンツ月': 'Tsuki_underwear',
-    'パンツ作哉': 'Sakuya_underwear',
-    'ユウヒ漫画': 'Yuuhi-quest',
-    'ワンニャン': 'Story-of-wong-mew',
-    '常磐九尾': 'Tokiwa-Kyubi',
-    '岡島兄弟': 'Okajima-brothers',
-    '晦朔': 'Kai-Nori',
-    '加藤たち絵': 'Katou_tachie',
-    '空たち絵': 'Sora_tachie',
-    '狼屋敷': 'Welcome-to-wolfs-celemony',
-    '木村たち絵': 'Kimura_tachie',
-    '南小林たち絵': 'Minami-Kobayashi_tachie',
-    '三朗たち絵': 'Saburo_tachie',
-    '慎太郎たち絵': 'Shintaro_tachie',
-    '双子たち絵': 'Akamine-brothers_tachie',
-    '四朗たち絵': 'Shiro_tachie',
-    '相撲ラーメン': 'Let-us-sumo-together 1',
-    '小学生組': 'Tomo-Sakase-Shinobu_primary_school',
-    '伊藤たち絵': 'Itou_tachie',
-    '友たち絵': 'Tomo_tachie',
-    '月たち絵': 'Tsuki_tachie',
-    '月木村相撲': 'Let-us-sumo-together 2',
-    '運動会２': 'Sports-celemony 2',
-    '運動会': 'Sports-celemony 1',
-    '中山清たち絵': 'Nakayama-Kiyo_tachie',
-    '中山兄弟': 'Nakayama-brothers',
-    '作哉たち絵': 'Sakuya_tachie',
-    'しのぶ': 'Shinobu',
 
     'Lo-Lo-Lovers': 'Run-Run-Lovers',
     '傲嬌男孩子的激效療': 'Drastic-remedy-for-tsundere',
@@ -576,7 +576,7 @@ export function mapUrl(project: Project): Project {
                             commandContent.source = replaceUrl(commandContent.source);
                             console.log(`\t\t -> ${commandContent.source}`);
                         } else {
-                            mapAnimation(commandContent);
+                            mapAnimation(commandContent.animation);
                         }
                     } else if (command.type == CommandType.ChangeImage) {
                         let commandContent: CommandContentChangeImageAnimation = (command.content as CommandContentChangeImageAnimation);
@@ -585,7 +585,7 @@ export function mapUrl(project: Project): Project {
                             commandContent.source = replaceUrl(commandContent.source);
                             console.log(`\t\t -> ${commandContent.source}`);
                         } else {
-                            mapAnimation(commandContent);
+                            mapAnimation(commandContent.animation);
                         }
                     } else if (command.type == CommandType.Sound) {
                         let commandContent: CommandContentSound = (command.content as CommandContentSound);
@@ -594,6 +594,11 @@ export function mapUrl(project: Project): Project {
                         console.log(`\t\t -> ${commandContent.source}`);
                     }
                 });
+            } else if (block.type == BlockType.Choice) {
+                let data: BlockChoice = block.data;
+                if (data.time instanceof Object) {
+                    mapAnimation(data.time as Animation[]);
+                }
             }
         });
     });
@@ -603,8 +608,10 @@ export function mapUrl(project: Project): Project {
 
 export function mapVariable(project: Project): Project {
     console.log('开始映射变量名称……');
+    let globalVariables: string[] = new Array<string>();
     project.variable.forEach(variable => {
         variable.name = replaceName(variable.name);
+        globalVariables.push(variable.name);
     });
     project.scene.forEach(scene => {
         scene.variable.forEach(variable => {
@@ -648,6 +655,13 @@ export function mapVariable(project: Project): Project {
                         v.content = replaceName(v.content);
                     });
                 });
+            } else if (block.type == BlockType.Input) {
+                let data: BlockInput = block.data;
+                data.content.forEach(content => {
+                    content.targetVariable = replaceName(content.targetVariable);
+                    if (globalVariables.includes(content.targetVariable))
+                        content.targetVariable = 'persistent.' + content.targetVariable;
+                });
             }
             block.next.forEach(next => {
                 next.condition.forEach(condition => {
@@ -659,8 +673,8 @@ export function mapVariable(project: Project): Project {
     return project;
 };
 
-function mapAnimation(content: CommandContentImageAnimation | CommandContentChangeImageAnimation): void {
-    content.animation.forEach(anim => {
+function mapAnimation(content: Animation[]): void {
+    content.forEach(anim => {
         console.log(`\t映射图像 ${anim.source}`);
         anim.source = replaceUrl(anim.source);
         console.log(`\t\t -> ${anim.source}`);

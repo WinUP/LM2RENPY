@@ -3,11 +3,12 @@ import * as xml2js from 'xml2js';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import { parseProject, PROJECT_RESOURCE_ROOT } from './LiveMakerParser';
 import { TranslationKeyword, mapUrl, mapVariable } from './RenpyMapper';
+import { parseProject, PROJECT_RESOURCE_ROOT } from './LiveMakerParser';
+import { Project, BlockType, BlockCalculator } from './include/GeneralScript';
+import { toSimplifiedChinese } from './LanguageConverter';
 import { generateRenpyCode } from './RenpyGenerator';
 import { LiveMakerProject } from './include/LiveMakerProject';
-import { Project, BlockType, BlockCalculator } from './include/GeneralScript';
 
 //function replaceName(root: string): void {
 //    let children = fs.readdirSync(root);
@@ -42,8 +43,12 @@ xml2js.parseString(str, { explicitArray : false, ignoreAttrs : false }, (err, re
     //project = mapVariable(project);
     //fs.writeFileSync('project_structure.txt', JSON.stringify(project, null, 2));
     //console.log(`Ren'Py工程映射文件已保存至project_structure.txt（${fs.statSync('project_structure.txt').size}字节）`);
+    //console.log('转换为简体中文……');
+    //project = toSimplifiedChinese(project);
+    //fs.writeFileSync('project_structure_cn.txt', JSON.stringify(project, null, 2));
+    //console.log(`简体中文工程文件已保存至project_structure_cn.txt（${fs.statSync('project_structure_cn.txt').size}字节）`);
     console.log('使用缓存文件');
-    project = JSON.parse(fs.readFileSync('project_structure.txt').toString());
+    project = JSON.parse(fs.readFileSync('project_structure_cn.txt').toString());
     console.log('生成Ren\'Py代码……');
     console.log(`目标文件夹：${TARGET_CODE_ROOT}`);
     generateRenpyCode(project, TARGET_CODE_ROOT);

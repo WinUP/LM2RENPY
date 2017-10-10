@@ -1,4 +1,5 @@
 import * as GS from './include/GeneralScript';
+import * as UUID from 'uuid';
 
 export function toLiveMakerHexName(num: number, length: number = 8){
     let numstr = num.toString(16).toUpperCase();
@@ -25,4 +26,8 @@ export function normalizeVariableValue(variable: GS.Variable<any>): GS.Variable<
     if (result.type == GS.VariableType.Boolean)
         result.value = result.value ? 'True' : 'False';
     return result;
+}
+
+export function newUUID(): string {
+    return UUID.v4().toUpperCase().replace(/-/g, '');
 }

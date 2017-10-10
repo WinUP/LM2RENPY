@@ -169,11 +169,15 @@ export function parseProject(source: LiveMakerProject): Project {
                     cancelable: Converter.booleanStringToBoolean(realNode.CancelEnabled),
                     hoverSound: realNode.SoundHover,
                     selectSound: realNode.SoundSelect,
-                    time: realNode.TimeLimit,
+                    time: null,
                     positionX: Converter.stringAlignToAlign(realNode.PosX),
                     positionY: Converter.stringAlignToAlign(realNode.PosY),
                     align: Converter.lalignToAlign(realNode.HAlign)
                 } as BlockChoice;
+                if (realNode.TimeLimit.endsWith('.lcm') || realNode.TimeLimit.endsWith('.lmt'))
+                    block.data.time = parseAnimation(fs_path.resolve(PROJECT_RESOURCE_ROOT, realNode.TimeLimit));
+                else 
+                    block.data.time = +realNode.TimeLimit;
             } else if (block.type == BlockType.Input) {
                 let realNode: LiveMakerProjectNodeInput = node as LiveMakerProjectNodeInput;
                 block.data = {
