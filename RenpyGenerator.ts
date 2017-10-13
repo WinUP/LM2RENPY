@@ -1,8 +1,11 @@
 import * as Path from 'path';
 import * as File from 'fs';
+import * as _ from 'lodash';
 
 import * as Utilities from './Utilities';
 import * as GS from './include/GeneralScript';
+import * as Renpy from './include/Renpy';
+import * as Mapper from './RenpyMapper';
 
 let cgList = {
     "images/CG/Opening celemony/Opening celemony 3.png": "lm_gallery_8311E1236AED463A9358E6303D1D2F5C",
@@ -212,6 +215,214 @@ let cgList = {
     "images/CG/Cave caught.png": "lm_gallery_D8781686D9AC4CE7B6A0E90C3986C44F"
 };
 
+let characters = {
+    "森海友·一之濑翼·木村树·伊藤圭·小岛正": "character_FB375250827B468FA619E1D3332B4A49", 
+    "森海友·赤峰空·一之濑翼": "character_EB879D7D60FC4A6F81E9929068C219C9", 
+    "森海友·穗海作哉": "character_1BE103360555438B982B3FE16BEEA9B7", 
+    "森海友·赤峰空": "character_FC590372ABEA4B2DB613EB37C7431D8F", 
+    "森海友·加藤准太": "character_F4EBC870950B4ECB9D3172337247DDB6", 
+    "森海友·绫濑忍": "character_F1C067067E994ED3BCDD495F5672C057", 
+    "森海友·木村树": "character_89BE185C40B74C9493F351B088D0B14A", 
+    "森海友·猫山四朗": "character_D80E77F720B2427988CBE8B3C9D410B6", 
+    "森海友·赤峰月": "character_5778A3FC85BD414A91022DAFC9C7F95D", 
+    "森海友·猫山三朗": "character_8F9081163913432EB0C4E92F3BEF33B2", 
+    "森海友·奥村慎太郎": "character_48C87300BA9F472EA8F61CA13F1DFFD5", 
+    "奥村慎太郎·一之濑翼": "character_FF2E3DBE295344879BB383D26ED7A102", 
+    "奥村慎太郎·绫濑忍": "character_60FBFC97833040B3BF48BD546EA2D21A", 
+    "奥村慎太郎·猫山三朗": "character_886E291C8DC04AB1B525662B832D7060", 
+    "一之濑翼·木村树·伊藤圭": "character_4903091269AF456488423DC58FCC835B", 
+    "一之濑翼·赤峰空": "character_C962C7D868EF49FA875EEB266F26A5C4", 
+    "一之濑翼·绫濑忍": "character_0F381D4042604DB2A1BAAC0800F3E470", 
+    "一之濑翼·穗海作哉": "character_46F0679EE95E48568201725B3132034D", 
+    "一之濑翼·奥村慎太郎": "character_C1ACC3B6DA2E4D77A7242D91DCA27283", 
+    "一之濑翼·森海友": "character_ED1BD69F10ED4298A05B14B1668B0EB7", 
+    "绫濑忍·森海友": "character_F130CE49811847FA8AFF600298EF0B0B", 
+    "绫濑忍·赤峰月": "character_F4678D5706C742BA96F1E20AB7DE7533", 
+    "绫濑忍·一之濑翼": "character_234CBC1ABA48426594E384533790446E", 
+    "赤峰月·绫濑忍·赤峰空": "character_2223ED4668654AA2AE861510D4535B3E", 
+    "赤峰月·赤峰空": "character_A32914C83F8745A099DE22449E5941AE", 
+    "赤峰空·赤峰月": "character_EEA1CA52E6404C2AA0CB73E1B0E12103", 
+    "赤峰空·奥村慎太郎·赤峰月": "character_92001BEAF7024CEDBA04DFABA92C4492", 
+    "猫山三朗·森海友": "character_ADB13DD2A2244080B91BCE3D35AFCD13", 
+    "猫山三朗·穗海作哉": "character_EC1184FBDE194BBD9DECE46FE8E2DD71", 
+    "穗海作哉·赤峰月": "character_159CBE577F7E422985E9E983AEE25B7C", 
+    "榊雪绪·穗海作哉·猫山四朗": "character_B7ECE5AD288B459883B82D1F06F4B087", 
+    "榊雪绪·猫山四朗": "character_F76C2A1825E64065AD041D465B08DCAA", 
+    "松田健治·穗海作哉": "character_03CB133AA1834AAFA7075AEB16FE5212", 
+    "松田健治·加藤准太·伊藤圭": "character_BF07BEFF8E95442F89E191BE67F83702", 
+    "松田健治·加藤准太·森海友·木村树": "character_4F59DB59883E478FA3D0839D9427066E", 
+    "松田健治·加藤准太": "character_88002A97E8CB44D78B605C4B095D964E", 
+    "小岛正·奥村慎太郎": "character_C145223964D04EC5A145BB47CBECBF61", 
+    "木村树·伊藤圭": "character_77528548B464465E82FB9B8146BC7C9D", 
+    "尤西·世依木守": "character_3965BDE17893498093B24178661EA9A8", 
+    "尤西·森海友": "character_372FB31E05204C1897E8367C4AA29C7E", 
+    "加藤准太·森海友": "character_963F470D629843FF97977BEB54E32799", 
+    "加藤准太·赤峰空·森海友": "character_A35B2993D3714C0DA76951758176AD79", 
+    "绫濑忍·清武一": "character_E65485223B5C41B3829F0303B0A83C39", 
+    "佐藤光·冈岛直弥": "character_48BFDB4EEBC4487DB68BAE409304EF1C", 
+    "妖怪A·一之濑翼": "character_89E57E5C1A124C7F979D78FE89D71C44", 
+    "天使·翼·恶魔": "character_9F360193837844688F01577B885DDEEF",
+    "天使·恶魔": "character_53BE345923AC4483B6B24F68F87E09C3",
+    "学生A·学生B": "character_E30D1225839D41EAA6DF1FE801A58C19",
+    "森海友 ": "character_C05C3819A53D452F992F33E8EEB8F2FC", 
+    "森海友": "character_C05C3819A53D452F992F33E8EEB8F2FC", 
+    "绫濑忍": "character_5687B1A59A1C4F729E4D5A9208C4BA98", 
+    "加藤准太": "character_A25F4320D02B4AA486CAFA0DD5FFA738", 
+    "小翼（作哉）": "character_266FFBE393DD49E5A47860AF08E61DAD",
+    "小翼": "character_D2532D1C4C594F1F90C6D0C11BE6159A",
+    "一之濑翼": "character_B2D74048419448B09660A611D97F1E82", 
+    "翼（旁白）": "character_E7A9BBC6EC14464FAA3AC8EA045127F8", 
+    "穗海作哉": "character_5C230B5A31C643C78DEF022AFCF45094", 
+    "奥村慎太郎": "character_4E46697CDCE94E71B71AF11BC1CE1E8E", 
+    "松田健治": "character_3F6A1F9EFB8648378161A0775D42FDBC",
+    "猫山三朗": "character_2E9EBF36D67342639F170C5692FC1CFF", 
+    "三郎": "character_2E9EBF36D67342639F170C5692FC1CFF",
+    "猫山": "character_74EE3AB975E54217AAE0812DB4B71EC6",
+    "木村树": "character_EB934999CE01407BBA53A8CD45209D81",
+    "村": "character_EB934999CE01407BBA53A8CD45209D81",
+    "赤峰月": "character_92EFF5BA3CF44591A203BF3C3BC72C44", 
+    "赤峰空": "character_CF55DE7A717B48FDB9F1EE71F7F261EE", 
+    "冈岛直弥": "character_EAB1790B08114347A54241CDAD9F2DE5", 
+    "小岛正": "character_6E794509EFD54827B5ECFCC27CCF6981", 
+    "泉翔": "character_561D5DAEA5D24670BFF9FD8EDC987463", 
+    "伊藤圭": "character_DDD1E80A3D514825A12D845EE4A104D5", 
+    "佐藤光": "character_D4B1716CD3374216A2B87C22DC454CF6", 
+    "常磐进": "character_9606E3445977422F9EDB99F2C26648E6",
+    "诹访部翔银时": "character_C1A999F730EF4F8DAB6472B20BB6C3DD", 
+    "猫山四朗": "character_2C99E63253B4442B9DCAEB50674CE201", 
+    "榊雪绪": "character_05BCD086EDA545A889E1C8E6D9B427A4", 
+    "世依木守": "character_240869D5F47A4787943171108EFBC8FC", 
+    "清武一 ": "character_32175124DB6C4404860AD228A210FB62", 
+    "清武一": "character_32175124DB6C4404860AD228A210FB62", 
+    "中山花音": "character_9289AB9259B545ED927B22FEEA558CE5", 
+    "冈岛雄介": "character_770767BB2E8C4540B0474E9903B83960", 
+    "天使": "character_B71C9519FCE043AC9EB70587F3CDECD8", 
+    "恶魔": "character_E236702BA9904A51ACA932D98E4C4CE1", 
+    "诹访部翔平": "character_5998DE10C4184DF8B0D74F340969E5F3", 
+    "中山紫音": "character_1E72E7013DF4471AA7E5CA6179453166",
+    "逆濑荒哉": "character_C54DEF8C0ABD48EA96F92BBFB89257A8",
+    "尤西": "character_27181D770C2D407993CFB29D9DEF41C4",
+    "朔": "character_9AC5AF54BC524A8D86C15B15FBF0A69C",
+    "晦": "character_03CF7D22C07B4DFE8B0FBA1C1D77E8FC",
+    "疑似暗黑小熊猫A": "character_FCBCEA10416443A08EEB907C44FF5EE1",
+    "疑似暗黑小熊猫B": "character_1E12E884157A4B72BB4239DD47034B84",
+    "广播": "character_837679EFF51044BA90E070631A37C141",
+    "小林·南": "character_BDBFAEE5F67D4C7485B2BC4A9337A187",
+    "南": "character_3567DCA7B276411E84B6C9561EDE3305",
+    "小林": "character_A98246B5CCD54766A46A0686FC36BF17",
+    "暗黑小熊猫A": "character_B70D2CE981474FB695790445D86D90EAF",
+    "暗黑小熊猫B": "character_949C5D39C7A5448D9C630FBFB57F58E5",
+    "暗黑小熊猫": "character_4048B4B4DE934B109BDEF8A9D4EEE84F",
+    "暗黑小熊猫们": "character_BA067474209A4C829056D606995A3087",
+    "导游": "character_7501522528C9477FB334261ADD54C99E",
+    "滑子": "character_AC29B1CD9C5B454D97074A3E0262CABC",
+    "校长": "character_4A8130BD43F94836B3A98FBFDC496573",
+    "大家": "character_30AF57F8EB584DF19BA60A0928B5AB6C",
+    "图书管理员": "character_5030D686289B42A8AA0E50904D1636AC",
+    "触手A": "character_AB3C8526383D4E09A72240A64B729D3A",
+    "触手B": "character_354AB3FF956E474CABBBA84B15E08D21",
+    "触手": "character_6B0EFDD22D904AEC9AE99F5CE547C288",
+    "店员": "character_560653756C534F998C28D120149E2689",
+    "猫": "character_AC1BCCFD722D437B8EE49F133D06C652",
+    "杉本·陆田": "character_9591108661F74785A2704EA658C54576",
+    "陆田": "character_565C1A162D8A42F9802540F6AEC679CE",
+    "杉本": "character_949827E343804CDCB743A1F508595A1D",
+    "店长": "character_24B4171C8DF14FDB80B705CD761785BB",
+    "贝—": "character_1FE20B5C80FD4E0AAA60EED9F2C10D3B",
+    "黑—": "character_042BA8C05D3B4A688877510F4A35DD27",
+    "宫—": "character_73033DA49B4F4B9FA3E795C054DF41D1",
+    "学弟A": "character_11E175FDFDEB41F4A471666EC0C36CEB",
+    "学弟B": "character_C9AFD6A620184400A73DFC7C24A24416",
+    "学生A": "character_81EF506961F5437C9A84AE0155EE4EB7",
+    "学生B": "character_3199F036B48E46DAA612A85337EAA434",
+    "雪绪·九尾": "character_F69CAB1595A14CFFB81FC8A5FFEA9B28",
+    "九尾": "character_54AE4B9FDBD8411EB4726AB42420A057",
+    "大龄男性": "character_4890B87B817B465F9D361751FBE0DB82",
+    "教练": "character_EF74EC0B59A74E189853866DE5F72DED",
+    "工作人员": "character_A83E987211F14BC8B43115779DAE4AC6",
+    "剑道部部员A": "character_63AE54D17F5441909896053D07A9AADB",
+    "剑道部部员B": "character_CA5D3959E07B4F20AED7D4229138D28C",
+    "剑道部部员": "character_70594E7F1AAF45529C461665503A81DE",
+    "救生员": "character_D926B2C9139C43789010E2BE66CDD9F8",
+    "忍的妈妈": "character_E93C09D76478411193AA519C94A86534",
+    "由实阿姨": "character_322CD008CBD24329A57AB154C21457EE",
+    "男学生A": "character_8487CD7150404BC38D9C0D017F2A27B4",
+    "男学生B": "character_18EBB62885FA47A49F4B136F7473553D",
+    "女生A": "character_6B01F89E720F4A7E973CADF836B63863",
+    "女生B": "character_61BDDF4E612148E09CBA86D443DD2631",
+    "女生C": "character_BCD7E4990E0347FD91E66BCAC31BE6D2",
+    "女老师": "character_2BE299C29D4F426282B8007E6DD0D577",
+    "中年大叔": "character_01A865C41A664A03AF94C623BAD2C668",
+    "学生": "character_12CF2580DFD74B92B8BFDED1A438FD10",
+    "副班主任": "character_B9A84C5EEAC74BEABC2CE4498949789F",
+    "乘务员": "character_47DA72DB39694F95BD7026F5B90C988B",
+    "参拜者": "character_41A0AB0650814250999932597629B397",
+    "森海友的母亲": "character_9F2520F8C2B0450B9E40EB5E214EFAAE",
+    "慎太郎之母": "character_40C8EE6F1DE3434F8170E1B6AF414FAE",
+    "旁白": "character_D031E7240DBB4FB8B4DC0EB6058B673A",
+    "章鱼章鱼星人": "character_00488CC680AE4A5A8664586546224D26",
+    "慎太郎（乌贼乌贼星人）": "character_85FDFD09618448329396A83DBA9AD46A",
+    "乌贼乌贼星人": "character_D3C6AB81F4534522B3811DAD9CE49BFE",
+    "其他乌贼乌贼星人": "character_76510132A5EA4110A52B01235D5CB567",
+    "民众": "character_A6DD6590E364433B9D23FE6E9702A2B3",
+    "观众": "character_D4219484B1564069AFC186D10A1F1A0C",
+    "忍（主人公）": "character_28756F4F098C43C8868A7C5E6F5C79E4",
+    "主人公": "character_D070C01F8B224F20AB85A72AF5EA4159",
+    "森海友（陨石）": "character_755076138FD147AF8FAD4D77CA9FB2DB",
+    "月（父亲）": "character_9D7BBC5F5ACD4AB594453ECADBE19A1C",
+    "父亲": "character_C41C7AF512384D35888BF931074BC9D5",
+    "空（兄弟A）": "character_F256AA133E3245DF98CD8304D397E232",
+    "三朗（兄弟B）": "character_FB25C5F407C2468AAB7936176DC67217",
+    "作哉（母亲）": "character_63ECDAC432954D25A1133541C392843D",
+    "母亲": "character_16A43B3542B048E7B11A7561BCEE8D2C",
+    "陨石": "character_1A0A4A2DDF7A4258B1E7F3A3E947E5DF",
+    "不良A": "character_58C453010A95441F89428B3B0FC6769F",
+    "不良B": "character_239B8B8550F4463CA6F8EB95AD7D2B40",
+    "不良C": "character_0545781607F94AB19318F9DEFE6F23FEF",
+    "师父": "character_3EC0EF09173548729337A6B44E572090",
+    "男": "character_CD9CDF8CAA474951B41D290F039F7B1E",
+    "吹奏乐部部员A": "character_4954256745384090AA74AF328C2DCA1C",
+    "吹奏乐部部员B": "character_D90D5D59A4B54CDBB882334D25807CF4",
+    "吹奏乐部部员C": "character_64055A9FD78C48F2BD1A5EF700620544",
+    "吹奏乐部顾问": "character_4A413F9DB9AC436C8F019E514FEE1C6B",
+    "龙套妖怪们": "character_0F54C1AC95134B9C83A3A2465951674A",
+    "龙套妖怪A": "character_0F54C1AC95134B9C83A3A2465951674A",
+    "龙套妖怪B": "character_0DAB3F029B3949F498C06CE019736917",
+    "龙套妖怪C": "character_B3E8E2FCA0084D258DDF8C24E5A5EB52",
+    "龙套妖怪D": "character_986D13B0F9E5428A885F41BDEE8AA7FC",
+    "龙套妖怪E": "character_9936EE8CCCE34512B99A64948CD37DC5",
+    "龙套妖怪F": "character_A059D37227E74406968A11154DA49703",
+    "龙套妖怪G": "character_4729132873C94E42B69ABF478369B2B7",
+    "妖怪A（领导）": "character_EA7EFC0EF6584E04B2C5AAF52A80E55A",
+    "妖怪A": "character_087659EA75B5488EA4A23F0515076CEA",
+    "妖怪B（策士）": "character_01C776EB22014581A9532E14B40AE795",
+    "妖怪B": "character_5E15EBFCC0C544B9B3F88F83A5AB6E37",
+    "妖怪C（无口）": "character_8EC4329DEB4D4BA586D34D1528A631B5",
+    "妖怪C": "character_277A5B99320F4960B0BA2ED5517EDC74",
+    "信纸": "character_33377E9B585948848173A0020689D0B3",
+    "同学A♂": "character_BEB410896CB74798B8380EE00ED7CEC5",
+    "同学B♂": "character_2318ABB2FEDC474A9A2CDED3F009DC57",
+    "同学A♀": "character_279366B9E730452A872AD0A2FB5920E9",
+    "布偶A·B": "character_1F1153FD452B4BD7B92BBCE60B817742",
+    "布偶A": "character_CEF3C77218424F24A2DB147988D32DD4",
+    "布偶B": "character_B77E1270E2BB4C51B0644A8B5FFA6B4D",
+    "可疑的和尚A": "character_9E800114A84B4C5D997E92D8DFAC55DA",
+    "可疑的和尚B": "character_BD992A058C1644BFAC28EBB292010999",
+    "可疑的和尚C": "character_6504704D9B8C455C82F5846A9E509885",
+    "可疑的和尚们": "character_DAC094FE63BC495D8871263D82389325",
+    "可疑的师父": "character_7F862BEF689344B28A76499839FDDF12",
+    "可疑的一帮人": "character_A7D263F259364869B03B8CAB33D49DD9",
+    "某工薪男": "character_F2F882E131644022B5F67DD52954BC17",
+    "和尚": "character_74B89E4FD80547519C96806BBD510C3B",
+    "司机": "character_10B4DCEAD0FA4D539F45B95FD25B6C7F",
+    "老师": "character_D6B011BEFE6F4890835691CD82AC2E53",
+    "A": "character_8A61F14A548B4F8E8AD255F394B88D9B",
+    "B": "character_CCD3CFBD37194A34B36410CA3C368200",
+    "？？？": "character_9811F37F81E540F2903E0EB0C6941072",
+    "未知来源的声音": "character_E3FBA5150C9C4CB68250475C1FF1B665",
+    "迷之人物": "character_C864489FEF7E4629A77AF1B78E071474"
+};
+
 /**
  * 表示一个Ren'Py脚本文件
  */
@@ -222,6 +433,8 @@ class RenpyFile {
     public static basePath: string = null;
     private _line: string[] = new Array<string>();
     private _indent: number = 0;
+    private whileLabel: string[] = new Array<string>();
+    private soundChannel: string[] = new Array<string>();
 
     /**
      * 生成一个Ren'Py脚本文件
@@ -230,10 +443,13 @@ class RenpyFile {
     public constructor(private name: string) { }
 
     /**
-     * 进行一次缩进
+     * 设置缩进值，或在不提供值的情况下将当前所进累加1
      */
-    public indent(): void {
-        this._indent++;
+    public indent(target: number = -1): void {
+        if (target > -1)
+            this._indent = target;
+        else
+            this._indent++;
     }
 
     /**
@@ -261,40 +477,7 @@ class RenpyFile {
     }
 
     /**
-     * 在无缩进的情况下添加一个初始化标记，并将缩进重置为1
-     * @param priority 该标记的优先级
-     */
-    public init(priority?: number): void {
-        if (Utilities.isValueAvailable(priority))
-            this._line.push(`init ${priority}:`);
-        else
-            this._line.push('init:');
-        this._indent = 1;
-    }
-
-    /**
-     * 在无缩进的情况下添加一个Python初始化标记，并将缩进重置为1
-     * @param priority 该标记的优先级
-     */
-    public pythonInit(priority?: number): void {
-        if (Utilities.isValueAvailable(priority))
-        this._line.push(`init ${priority} python:`);
-        else
-            this._line.push('init python:');
-        this._indent = 1;
-    }
-
-    /**
-     * 在无缩进的情况下添加一个标签，并将缩进重置为1
-     * @param name 标签名称
-     */
-    public label(name: string): void {
-        this._line.push(`label lmn_${name}:`);
-        this._indent = 1;
-    }
-
-    /**
-     * 插入一句python代码
+     * 添加一行python代码
      * @param code 代码内容
      */
     public python(code: string): void {
@@ -302,11 +485,44 @@ class RenpyFile {
     }
 
     /**
-     * 插入一个python定义块，并自动缩进一次
+     * 在无缩进的情况下添加一个初始化标记
+     * @param priority 该标记的优先级
+     */
+    public init(priority?: number): void {
+        if (Utilities.isValueAvailable(priority))
+            this._line.push(`init ${priority}:`);
+        else
+            this._line.push('init:');
+    }
+
+    /**
+     * 在无缩进的情况下添加一个Python初始化标记
+     * @param priority 该标记的优先级
+     */
+    public pythonInit(priority?: number): void {
+        if (Utilities.isValueAvailable(priority))
+        this._line.push(`init ${priority} python:`);
+        else
+            this._line.push('init python:');
+    }
+
+    /**
+     * 添加一个标签
+     * @param name 标签名称
+     * @param useIndent 是否使用缩进（默认为否）
+     */
+    public label(name: string, useIndent: boolean = false): void {
+        if (useIndent)
+            this.line(`label lmn_${name}:`);
+        else
+            this._line.push(`label lmn_${name}:`);
+    } 
+
+    /**
+     * 插入一个python代码块
      */
     public pythonBlock(): void {
         this.line('python:');
-        this.indent();
     }
 
     /**
@@ -321,34 +537,174 @@ class RenpyFile {
     }
 
     /**
-     * 添加一个条件选择语句，并自动缩进一次
+     * 添加一个条件选择语句
      * @param condition 条件
      */
     public if(condition: string): void {
         this.line(`if ${condition}:`);
-        this.indent();
+    }
+
+    /**
+     * 添加一个Python条件选择语句
+     * @param condition 条件
+     */
+    public pythonIf(condition: string): void {
+        this.python(`if ${condition}:`);
+    }
+
+    /**
+     * 添加一个额外条件选择语句
+     * @param condition 条件
+     */
+    public elif(condition: string): void {
+        this.line(`elif ${condition}:`);
+    }
+
+    /**
+     * 添加一个Python额外条件选择语句
+     * @param condition 条件
+     */
+    public pythonElif(condition: string): void {
+        this.python(`elif ${condition}:`);
+    }
+
+    /**
+     * 添加一个其他条件选择语句
+     * @param condition 条件
+     */
+    public else(): void {
+        this.line('else:');
+    }
+
+    /**
+     * 添加一个Python其他条件选择语句
+     * @param condition 条件
+     */
+    public pythonElse(): void {
+        this.python('else:');
+    }
+
+    /**
+     * 添加一个循环语句
+     * @param condition 条件
+     */
+    public while(condition: string): void {
+        let id: string = Utilities.newUUID();
+        this.python(`_lmf_while_condition_${id} = True`);
+        this.line(`label lmf_while_label_${id}:`);
+        this.line(`while ${condition} and _lmf_while_condition_${id} == True:`);
+        this.whileLabel.push(id);
+    }
+
+    /**
+     * 添加一个Python循环语句
+     * @param condition 条件
+     */
+    public pythonWhile(condition: string): void {
+        this.python(`while ${condition}:`);
+    }
+
+    /**
+     * 插入一个循环终止标记
+     */
+    public break(): void {
+        if (this.whileLabel.length == 0) throw '无法终止循环，因为当前不在循环中';
+        let id: string = this.whileLabel[this.whileLabel.length - 1];
+        this.python(`_lmf_while_condition_${id} = False`);
+        this.line(`jump lmf_while_label_${id}`);
+    }
+
+    /**
+     * 插入一个Python循环终止标记
+     */
+    public pythonBreak(): void {
+        this.python('break');
+    }
+
+    /**
+     * 结束一个循环
+     */
+    public endWhile(): void {
+        if (this.whileLabel.length == 0) throw '无法结束循环，因为当前不在循环中';
+        this.whileLabel.pop();
+    }
+
+    /**
+     * 插入一个循环中断标记
+     */
+    public continue(): void {
+        if (this.whileLabel.length == 0) throw '无法跳出循环，因为当前不在循环中';
+        this.line(`jump lmf_while_label_${this.whileLabel[this.whileLabel.length - 1]}`);
+    }
+
+    /**
+     * 插入一个Python循环中断标记
+     */
+    public pythonContinue(): void {
+        this.python('continue');
+    }
+
+    /**
+     * 在Python代码块中定义一个变量
+     * @param variable 目标变量
+     */
+    public defineInPythonBlock(variable: GS.Variable<any>): void {
+        variable = Utilities.normalizeVariableValue(variable);
+        if (variable.scope == GS.VariableScope.Static) {
+            this.if(`persistent.${variable.name} == None`);
+            this.indent();
+            this.line(`persistent.${variable.name} = ${variable.value}`);
+            this.unindent();
+        } else
+            this.line(`${variable.name} = ${variable.value}`);
     }
 
     /**
      * 定义一个变量
-     * @param variable 
+     * @param variable 目标变量
      */
-    public define(variable: GS.Variable<any>, singlePythonLine: boolean = false): void {
+    public defineVariable(variable: GS.Variable<any>): void {
         variable = Utilities.normalizeVariableValue(variable);
         if (variable.scope == GS.VariableScope.Static) {
             this.if(`persistent.${variable.name} == None`);
-            this.line(`${singlePythonLine ? '$ ' : ''}persistent.${variable.name} = ${variable.value}`);
+            this.indent();
+            this.python(`persistent.${variable.name} = ${variable.value}`);
             this.unindent();
         } else
-            this.line(`${singlePythonLine ? '$ ' : ''}${variable.name} = ${variable.value}`);
+            this.python(`${variable.name} = ${variable.value}`);
     }
 
-    public undefine(variable: GS.Variable<any>, singlePythonLine: boolean = false): void {
+    /**
+     * 定义一个常量
+     * @param name 常量名称
+     * @param value 常量值
+     */
+    public define(name: string, value: string): void {
+        this.line(`define ${name} = ${value}`);
+    }
+
+    /**
+     * 在Python代码块中将一个变量的值设置为None
+     * @param variable 目标变量
+     */
+    public undefineInPythonBlock(variable: GS.Variable<any>): void {
         variable = Utilities.normalizeVariableValue(variable);
         if (variable.scope == GS.VariableScope.Static)
-            this.line(`${singlePythonLine ? '$ ' : ''}persistent.${variable.name} = None`);
+            this.line(`persistent.${variable.name} = None`);
         else
-            this.line(`${singlePythonLine ? '$ ' : ''}${variable.name} = None`);
+            this.line(`${variable.name} = None`);
+    }
+
+    /**
+     * 将一个变量的值设置为None
+     * @param variable 目标变量
+     */
+    public undefine(variable: GS.Variable<any>): void {
+        variable = Utilities.normalizeVariableValue(variable);
+        if (variable.scope == GS.VariableScope.Static)
+            this.python(`persistent.${variable.name} = None`);
+        else
+            this.python(`${variable.name} = None`);
     }
 
     /**
@@ -480,7 +836,9 @@ class RenpyFile {
      * @param item 动画对象
      */
     public animation(item: GS.Animation): string {
-        let name = this.image(item.name, item.source, item.priority, item.horizontalReverse, item.verticalReverse, true);
+        let name = this.defineImage(item.name, item.source, true, item.horizontalReverse, item.verticalReverse);
+        this.show(name, true);
+        this.indent();
         this.line(`xanchor ${item.center.x}`);
         this.line(`yanchor ${item.center.y}`);
         this.line(`xpos ${item.location.start.x}`);
@@ -545,8 +903,18 @@ class RenpyFile {
         return name;
     }
 
-    public image(name: string, source: string, zorder: number = 0, horizontalFlip: boolean = false, verticalFlip: boolean = false, withBlock: boolean = false): string {
-        name = `lmp_${name}_${Utilities.newUUID()}`;
+    /**
+     * 显示一张图片
+     * @param name 图片名称
+     * @param source 文件路径
+     * @param zorder 优先度
+     * @param horizontalFlip 是否进行水平翻转
+     * @param verticalFlip 是否进行垂直翻转
+     * @param withBlock 是否为此图片建立一个代码块并自动缩进一次
+     */
+    public defineImage(name: string, source: string, autoUniqueName: boolean = true, horizontalFlip: boolean = false, verticalFlip: boolean = false): string {
+        if (autoUniqueName)
+            name = `lmp_${name}_${Utilities.newUUID()}`;
         let param: string[] = new Array<string>();
         if (horizontalFlip)
             param.push(`horizontal=True`);
@@ -556,12 +924,82 @@ class RenpyFile {
             this.line(`image ${name} = im.Flip("${source}", ${param.join(', ')})`);
         else
             this.line(`image ${name} = "${source}"`);
-        if (withBlock) {
-            this.line(`show ${name} zorder ${zorder}:`);
-            this.indent();
-        } else
-            this.line(`show ${name} zorder ${zorder}`);
         return name;
+    }
+
+    /**
+     * 显示一张图片
+     * @param name 图片名称
+     * @param useExpression 是否将名称作为表达式解析
+     * @param rename 图片别名
+     * @param transformName 要使用的变换矩阵
+     * @param zorder 图片优先级
+     */
+    public show(name: string, withBlock: boolean = false, useExpression: boolean = false, rename: string = null, transformName: string = null, zorder: number = null): void {
+        let command: string = 'show';
+        if (useExpression)
+            command += ' expression';
+        command += ` ${name}`;
+        if (rename && rename != '')
+            command += ` as ${rename}`;
+        if (transformName && transformName != '')
+            command += ` at ${transformName}`;
+        if (zorder)
+            command += ` zorder ${zorder}`;
+        if (withBlock)
+            command += ':';
+        this.line(command);
+    }
+
+    /**
+     * 通过Python显示图片（支持表达式解析和非英文字符）
+     * @param name 图片名称
+     * @param source 图片路径
+     * @param transformName 要使用的变换矩阵们
+     * @param zorder 图片优先级
+     */
+    public pythonShow(name: string, source: string, transformName: string[] = null, zorder: number = null): void {
+        let param: string[] = new Array<string>();
+        param.push(`${source}`);
+        param.push(`what=renpy.easy.displayable(${source})`);
+        param.push(`tag=${name}`);
+        if (transformName && transformName.length > 0)
+            param.push(`at_list=[${transformName.join(',')}]`);
+        if (zorder)
+            param.push(`zorder=${zorder}`);
+        this.python(`renpy.show(${param.join(', ')})`);
+    }
+
+    /**
+     * 插入一个With指令
+     * @param transition 要使用的动画
+     */
+    public with(transition: string): void {
+        this.line(`with ${transition}`);
+    }
+
+    /**
+     * 插入一个Python with statement
+     * @param transition 要使用的动画
+     */
+    public pythonWith(transition: string): void {
+        this.python(`renpy.with_statement(${transition})`);
+    }
+
+    /**
+     * 隐藏一个对象
+     * @param name 对象名称
+     */
+    public hide(name: string): void {
+        this.line(`hide ${name}`);
+    }
+
+    /**
+     * 隐藏一个对象（支持表达式解析和非英文字符）
+     * @param name 对象名称
+     */
+    public pythonHide(name: string): void {
+        this.python(`renpy.hide(${name})`);
     }
 
     /**
@@ -576,19 +1014,88 @@ class RenpyFile {
     }
 
     /**
-     * 隐藏一个对象
-     * @param name 对象名称
+     * 播放一段音频
+     * @param source 音频文件路径
+     * @param channel 要使用的音轨
      */
-    public hide(name: string): void {
-        this.line(`hide ${name}`);
+    public sound(source: string, channel: Renpy.SoundChannel): void {
+        this.line(`play ${channel} "${source}"`);
     }
 
+    /**
+     * 设置对话框显隐性
+     * @param show 是否显示对话框
+     */
+    public window(show: boolean): void {
+        this.line(`window ${show ? 'show' : 'hide' }`);
+    }
+
+    /**
+     * 通过Python播放一段音频（支持表达式解析和非英文字符）
+     * @param name 音轨名称
+     * @param source 文件路径
+     * @param repeat 是否循环播放
+     */
+    public pythonSound(name: string, source: string, repeat: boolean = false): void {
+        if (this.soundChannel.includes(name))
+            this.python(`renpy.music.stop(${name}, 0.2)`);
+        else {
+            this.python(`renpy.music.register_channel(${name}, ${repeat ? 'music' : 'sfx'}, ${repeat ? 'True' : 'False'})`);
+            this.soundChannel.push(name);
+        }
+        this.python(`renpy.music.play(${source}, ${name})`);
+    }
+
+    /**
+     * 停止一段音频
+     * @param channel 要停止的音轨
+     * @param fadeOut 淡出停止时间
+     */
+    public stopSound(channel: Renpy.SoundChannel, fadeOut: number = 0): void {
+        this.line(`stop ${channel}${fadeOut > 0 ? ' fadeout ' + fadeOut : ''}`);
+    }
+
+    /**
+     * 通过Python停止一段音频（支持表达式解析和非英文字符）
+     * @param channel 要停止的音轨
+     * @param fadeOut 淡出停止时间
+     */
+    public pythonStopSound(name: string, fadeOut: number = 0): void {
+        this.python(`renpy.music.stop(${name}, ${fadeOut})`);
+    }
+    
     /**
      * 插入一个返回标记
      */
     public return(): void {
         this.line('return');
     }
+
+    /**
+     * 插入一个Python返回标记
+     */
+    public pythonReturn(): void {
+        this.python('return');
+    }
+
+    /**
+     * 扩展前一个对话
+     * @param text 对话内容
+     */
+    public extend(text: string): void {
+        this.line(`extend ${text}`);
+    }
+
+    /**
+     * 插入一个对话
+     * @param character 对话所属角色
+     * @param content 对话内容
+     */
+    public text(character: string, content:string): void {
+        this.line(`${character} ${content}`);
+    }
+
+
 
     /**
      * 保存当前文件
@@ -618,9 +1125,18 @@ export function generateRenpyCode(project: GS.Project, position: string): void {
 function saveGlobalVariables(project: GS.Project): void {
     let varInitFile = new RenpyFile('variables');
     varInitFile.pythonInit(-200);
+    varInitFile.indent();
     project.variable.forEach(variable => {
-        varInitFile.define(variable);
+        varInitFile.defineInPythonBlock(variable);
     });
+    varInitFile.unindent();
+    varInitFile.line();
+    varInitFile.init(-200);
+    varInitFile.indent();
+    Object.keys(characters).forEach(character => {
+        varInitFile.define(characters[character], `Character("${character}", who_color="#0099FF")`);
+    });
+    varInitFile.define('character_normal', `Character("", who_color="#0099FF")`);
     varInitFile.save();
 }
 
@@ -640,17 +1156,20 @@ function saveBlock(block: GS.Block<any>, project: GS.Project, scene: GS.Scene, f
     let nodeCode = Utilities.toLiveMakerHexName(block.id);
     file.line();
     file.label(nodeCode);
+    file.indent(1);
     file.comment(`Original LiveMaker node: ${nodeCode} (${block.name})`);
     if (block.type == GS.BlockType.SceneStart && scene.variable.length > 0) {
         file.pythonBlock();
+        file.indent();
         scene.variable.forEach(variable => {
-            file.define(variable);
+            file.defineInPythonBlock(variable);
         });
         file.unindent();
     } else if (block.type == GS.BlockType.SceneEnd && scene.variable.length > 0) {
         file.pythonBlock();
+        file.indent();
         scene.variable.forEach(variable => {
-            file.undefine(variable);
+            file.undefineInPythonBlock(variable);
         });
         file.unindent();
     } else if (block.type == GS.BlockType.Jump) {
@@ -704,8 +1223,430 @@ function saveBlock(block: GS.Block<any>, project: GS.Project, scene: GS.Scene, f
             file.lmChoice(data.choice, data.hoverSound, data.selectSound, data.time);
         }
     } else if (block.type == GS.BlockType.Calculator) {
-        
+        let data: GS.BlockCalculator = block.data;
+        data.variable.forEach(variable => {
+            file.defineVariable(variable);
+        });
+        saveCode(data.code, file, nodeCode);
+        data.variable.forEach(variable => {
+            file.undefine(variable);
+        });
+    } else if (block.type == GS.BlockType.Normal) {
+        let data: GS.BlockNormal = block.data;
+        saveNormal(data.content, file);
     }
+    file.indent(1);
     file.return();
-    file.unindent();
+    file.indent(0);
+}
+
+function saveCode(codes: GS.Code[], file: RenpyFile, nodeCode: string): void {
+    let i = 0;
+    let currentWhile: GS.CalculatorWhileData = null;
+    let whileIndent: number = -1;
+    while (i < codes.length) {
+        let code = codes[i];
+        file.indent(code.scopeIndent + 1);
+        if (code.type == GS.CalculatorType.While) {
+            let content: GS.CalculatorWhileData = code.data as GS.CalculatorWhileData;
+            if (content.init)
+                file.python(content.init);
+            file.while(content.condition);
+            file.indent();
+            currentWhile = content;
+            whileIndent = code.scopeIndent;
+        } else if (code.type == GS.CalculatorType.Continue) {
+            let content: GS.CalculatorContinueData = code.data as GS.CalculatorContinueData;
+            if (content.condition == 'True')
+                file.continue();
+            else {
+                file.if(content.condition);
+                file.indent();
+                file.python(currentWhile.loop);
+                file.continue();
+                file.unindent();
+            }
+        } else if (code.type == GS.CalculatorType.Break) {
+            let content: GS.CalculatorBreakData = code.data as GS.CalculatorBreakData;
+            if (content.condition == 'True')
+                file.break();
+            else {
+                file.if(content.condition);
+                file.indent();
+                file.break();
+                file.unindent();
+            }
+        } else {
+            if (whileIndent > -1 && code.scopeIndent <= whileIndent) {
+                file.indent(whileIndent + 2);
+                if (currentWhile.loop)
+                    file.python(currentWhile.loop);
+                file.indent(code.scopeIndent + 1);
+                currentWhile = null;
+                whileIndent = -1;
+                file.endWhile();
+            }
+            if (code.type == GS.CalculatorType.Call) { // 不处理CALL
+                let content: GS.CalculatorCallData = code.data as GS.CalculatorCallData; 
+                file.comment(`WARNING: IGNORE CALL ${content.page} WITH PARAM ${content.param.join(', ')}`);
+                file.python('True == True');
+            } else if (code.type == GS.CalculatorType.TextIns) { // 不处理TEXTINS
+                let content: GS.CalculatorTextInsData = code.data as GS.CalculatorTextInsData; 
+                file.comment(`WARNING: IGNORE TEXTINS ${content.content} ON ${content.target}`);
+                file.python('True == True');
+            } else if (code.type == GS.CalculatorType.Wait) {
+                let content: GS.CalculatorWaitData = code.data as GS.CalculatorWaitData;
+                if (content.condition != null) // 不处理WAIT的条件
+                    file.comment(`WARNING: IGNORE CONDITION OF WAIT ${content.condition}`);
+                if (content.time > 0)
+                    file.pause(content.time);
+                else
+                    file.python('True == True');
+            } else if (code.type == GS.CalculatorType.VarNew) {
+                let content: GS.CalculatorVarNewData = code.data as GS.CalculatorVarNewData;
+                file.defineVariable(content);
+            } else if (code.type == GS.CalculatorType.VarDel) {
+                let content: GS.CalculatorVarDelData = code.data as GS.CalculatorVarDelData;
+                file.python(`${content.name} = None`);
+            } else if (code.type == GS.CalculatorType.Sound) {
+                let content: GS.CalculatorSoundData = code.data as GS.CalculatorSoundData;
+                file.pythonSound(content.name, content.source, content.repeat);
+            } else if (code.type == GS.CalculatorType.ObjDel) {
+                let content: GS.CalculatorObjDelData = code.data as GS.CalculatorObjDelData;
+                file.pythonHide(content.name);
+            } else if (code.type == GS.CalculatorType.StopMedia) {
+                let content: GS.CalculatorStopMediaData = code.data as GS.CalculatorStopMediaData;
+                file.pythonStopSound(content.name, content.time);
+                if (content.wait)
+                    file.pause(content.time);
+            } else if (code.type == GS.CalculatorType.If) {
+                let content: GS.CalculatorIfData = code.data as GS.CalculatorIfData;
+                file.if(content.condition);
+            } else if (code.type == GS.CalculatorType.Elseif) {
+                let content: GS.CalculatorElseifData = code.data as GS.CalculatorElseifData;
+                file.elif(content.condition);
+            } else if (code.type == GS.CalculatorType.Else) {
+                file.else();
+            } else if (code.type == GS.CalculatorType.ImageNew) {
+                let content: GS.CalculatorImageNewData = code.data as GS.CalculatorImageNewData;
+                file.pythonShow(content.name, content.source, null, content.priority);
+            } else if (code.type == GS.CalculatorType.Calc) {
+                let content: GS.CalculatorCalcData = code.data as GS.CalculatorCalcData;
+                if (content.line.startsWith('SetArray')) {
+                    let reg = new RegExp('(\\w+)[,\\)]', "g");
+                    let matched: string[];
+                    let params: string[] = new Array<string>();
+                    while (matched = reg.exec(content.line))
+                        params.push(matched[1].trim());
+                    let result = params[0];
+                    params.splice(0, 1);
+                    let arrayContent: string = '0';
+                    for (let i = params.length - 1; i > -1; i--) {
+                        arrayContent = `[${arrayContent}] * ${params[i]}`;
+                    }
+                    file.python(`${result} = ${arrayContent}`);
+                } else {
+                    if (content.line.startsWith('AddArray'))
+                        file.comment(`WARNING: IGNORE ADDARRAY`);
+                    if (content.line.startsWith('AddDelimiter'))
+                        file.comment(`WARNING: IGNORE ADDDELIMITER`);
+                    if (content.line.startsWith('TrimArray'))
+                        file.comment(`WARNING: IGNORE TRIMARRAY`);
+                    if (content.line.startsWith('StringToArray'))
+                        file.comment(`WARNING: IGNORE STRINGTOARRAY`);
+                    if (content.line.startsWith('UniqueArray'))
+                        file.comment(`WARNING: IGNORE UNIQUEARRAY`);
+                    file.python(content.line);
+                }
+            }
+        }
+        i++;
+    }
+}
+
+function saveNormal(commands: GS.Command[], file: RenpyFile): void {
+    let i = 0;
+    let inDiaogue: boolean = false;
+    let effects = findAllEffect(commands);
+    while (i < commands.length) {
+        let command = commands[i];
+        if (command.type == GS.CommandType.Text) {
+            let dialogue: string = '';
+            let character: string = '';
+            while (i < commands.length && (command.type == GS.CommandType.Text ||
+                                           command.type == GS.CommandType.Wait ||
+                                           command.type == GS.CommandType.WaitForClick ||
+                                           command.type == GS.CommandType.ChangeTextSpeed ||
+                                           command.type == GS.CommandType.ShowVariableContent )) {
+                if (command.type == GS.CommandType.Text) {
+                    if (inDiaogue) {
+                        dialogue += styleText(command.content as GS.CommandContentText);
+                    } else {
+                        let text = findCharacter(styleText(command.content as GS.CommandContentText));
+                        file.comment(`CHARACTER ${text.realName}`);
+                        character = text.character;
+                        dialogue = text.content;
+                        inDiaogue = true;
+                    }
+                } else if (command.type == GS.CommandType.Wait) {
+                    dialogue += `{w=${(command.content as GS.CommandContentWait).time / 1000}}`;
+                } else if (command.type == GS.CommandType.ShowVariableContent) {
+                    dialogue += `[${(command.content as GS.CommandContentNameTarget).name}]`;
+                } else {
+                    dialogue += '{w}';
+                }
+                i ++;
+                command = commands[i];
+            }
+            if (command && command.type != GS.CommandType.WaitAndClear)
+            dialogue += '{nw}';
+            dialogue = removeUselessCharacter(dialogue);
+            if (character != '')
+                file.text(character, `"${dialogue}"`);
+            else
+                file.extend(`"${dialogue}"`);
+            file.line();
+            i --;
+        } else if (command.type == GS.CommandType.WaitAndClear) {
+            inDiaogue = false;
+            //file.pause();
+            file.line();
+        } else if (command.type == GS.CommandType.MessageBox) {
+            file.window(true);
+            file.with(`Dissolve(${(command.content as GS.CommandContentTimeTarget).time / 1000})`)
+            file.line();
+        } else if (command.type == GS.CommandType.DestroyMessageBox) {
+            file.window(false);
+            file.with(`Dissolve(${(command.content as GS.CommandContentTimeTarget).time / 1000})`)
+            file.line();
+        } else if (command.type == GS.CommandType.ChangeMessageBox) {
+            file.python(`set_window("${(command.content as GS.CommandContentNameTarget).name}")`);
+        } else if (command.type == GS.CommandType.Sound) {
+            let commandContent = command.content as GS.CommandContentSound;
+            file.sound(commandContent.source, findSoundtrack(commandContent.track));
+            file.line();
+        } else if (command.type == GS.CommandType.StopSound) {
+            let commandContent = command.content as GS.CommandContentStopSound;
+            file.stopSound(findSoundtrack(commandContent.track), commandContent.time / 1000);
+            file.line();
+        } else if (command.type == GS.CommandType.Wait) {
+            file.pause((command.content as GS.CommandContentWait).time / 1000);
+            file.line();
+        } else if (command.type == GS.CommandType.DestroyImage) {
+            let commandContent = command.content as GS.CommandContentDestroyImage;
+            commandContent.target.forEach(target => {
+                file.pythonHide(`"${target}"`);
+            });
+            if (commandContent.useFlip && commandContent.useFlip != "") {
+                file.pythonWith(getEffect(effects, commandContent.useFlip));
+            }
+            file.line();
+        } else if (command.type == GS.CommandType.ChangeImage) {
+            let commandContent = command.content as GS.CommandContentChangeImageAnimation;
+            if (commandContent.animation && commandContent.animation.length > 0) {
+                commandContent.animation.forEach(animation => {
+                    file.animation(animation);
+                });
+                file.line();
+                i++;
+                continue;
+            }
+            file.pythonShow(`"${commandContent.name}"`, `"${commandContent.source}"`);
+            if (commandContent.useFlip && commandContent.useFlip != "") {
+                file.pythonWith(getEffect(effects, commandContent.useFlip));
+            }
+            file.line();
+        } else if (command.type == GS.CommandType.Image) {
+            let commandContent = command.content as GS.CommandContentImageAnimation;
+            if (commandContent.animation && commandContent.animation.length > 0) {
+                commandContent.animation.forEach(animation => {
+                    file.animation(animation);
+                });
+                file.line();
+                i++;
+                continue;
+            }
+            let transform: string = '';
+            if (commandContent.x == GS.Align.Left && commandContent.y == GS.Align.Top)
+                transform = 'left_top';
+            else if (commandContent.x == GS.Align.Left && commandContent.y == GS.Align.Bottom)
+                transform = 'left_bottom';
+            else if (commandContent.x == GS.Align.Left && commandContent.y == GS.Align.Center)
+                transform = 'left_center';
+            else if (commandContent.x == GS.Align.Right && commandContent.y == GS.Align.Top)
+                transform = 'right_top';
+            else if (commandContent.x == GS.Align.Right && commandContent.y == GS.Align.Center)
+                transform = 'right_center';
+            else if (commandContent.x == GS.Align.Right && commandContent.y == GS.Align.Bottom)
+                transform = 'right_bottom';
+            else if (commandContent.x == GS.Align.Center && commandContent.y == GS.Align.Top)
+                transform = 'center_top';
+            else if (commandContent.x == GS.Align.Center && commandContent.y == GS.Align.Center)
+                transform = 'center_center';
+            else if (commandContent.x == GS.Align.Center && commandContent.y == GS.Align.Bottom)
+                transform = 'center_bottom';
+            else
+                transform = `Transform(xpos=${commandContent.x}, ypos=${commandContent.y})`
+            file.pythonShow(`"${commandContent.name}"`, `"${commandContent.source}"`, [transform], commandContent.priority);
+            if (commandContent.useFlip && commandContent.useFlip != "") {
+                file.pythonWith(getEffect(effects, commandContent.useFlip));
+            }
+            file.line();
+        }
+        i++;
+    }
+}
+
+function findAllEffect(commands: GS.Command[]): GS.CommandContentEffect[] {
+    return commands.filter(v => v.type == GS.CommandType.Effect).map(v => v.content as GS.CommandContentEffect);
+}
+
+function styleText(text: GS.CommandContentText): string {
+    let result = text.text;
+    if (text.bold)
+        result = `{b}${result}{/b}`;
+    if (text.color && text.color != '')
+        result = `{color=${text.color}}${result}{/color}`;
+    if (text.italic)
+        result = `{i}${result}{/i}`;
+    if (text.size && text.size > 0)
+        result = `{size=${text.size}}${result}{/size}`;
+    if (text.underline)
+        result = `{u}${result}{/u}`;
+    result = result.replace(/\n/g, '\\n');
+    result = result.replace(/　/g, '');
+    return result;
+}
+
+function removeUselessCharacter(text: string): string {
+    text = text.replace(/\\n/g, '');
+    text = text.replace(/「/g, '');
+    text = text.replace(/」/g, '');
+    if (text.endsWith('{w}'))
+        text = text.substring(0, text.lastIndexOf('{w}'));
+    if (text.endsWith('{w}{nw}'))
+        text = text.substring(0, text.lastIndexOf('{w}{nw}'));
+    return text;
+}
+
+function findCharacter(text: string): { character: string, realName: string, content: string } {
+    let keys = Object.keys(characters);
+    for (let i = 0; i < keys.length; i++) {
+        if (text.startsWith(keys[i]) && text[keys[i].length] == '\\') {
+            return {
+                character: characters[keys[i]],
+                realName: keys[i],
+                content: text.substring(keys[i].length + 2)
+            };
+        }
+    }
+    return {
+        character: 'character_normal',
+        realName: 'normal',
+        content: text
+    };
+}
+
+function findSoundtrack(track: GS.Soundtrack): Renpy.SoundChannel {
+    switch(track) {
+        case GS.Soundtrack.BGM:
+            return Renpy.SoundChannel.Bgm;
+        case GS.Soundtrack.BGM2:
+            return Renpy.SoundChannel.Bgm2;
+        case GS.Soundtrack.Effect:
+            return Renpy.SoundChannel.Effect;
+        case GS.Soundtrack.Effect2:
+            return Renpy.SoundChannel.Effect2;
+        case GS.Soundtrack.Voice:
+            return Renpy.SoundChannel.Voice;
+        case GS.Soundtrack.Voice2:
+            return Renpy.SoundChannel.Voice2;
+        default:
+            throw '找不到对应的音轨：' + track;
+    }
+}
+
+function getEffect(list: GS.CommandContentEffect[], name: string): string {
+    let target = list.find(v => v.name == name);
+    if (!target) throw '找不到对应的过渡效果：' + name;
+    switch (target.type) {
+        case GS.EffectType.None:
+            return 'None';
+        case GS.EffectType.Fade:
+            return `Dissolve(${target.time / 1000})`
+        case GS.EffectType.BlindHorizontal:
+            return `ImageDissolve("lib/lmeffect/blind_h.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.BlindVertical:
+            return `ImageDissolve("lib/lmeffect/blind_v.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.CurtainHorizontal:
+            return `ImageDissolve("lib/lmeffect/curtain_h.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.CurtainVertical:
+            return `ImageDissolve("lib/lmeffect/curtain_v.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.ScrollHorizontal:
+            return `PushMove(${target.time / 1000}, "push${target.reverse ? 'right' : 'left'}")`;
+        case GS.EffectType.ScrollVertical:
+            return `PushMove(${target.time / 1000}, "push${target.reverse ? 'up' : 'down'}")`;
+        case GS.EffectType.Grid:
+            return `ImageDissolve("lib/lmeffect/grid.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.GridHorizontal:
+            return `ImageDissolve("lib/lmeffect/grid_h.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.GridVertical:
+            return `ImageDissolve("lib/lmeffect/grid_v.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.Dither:
+            return `ImageDissolve("lib/lmeffect/dither.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.White:
+            return `Fade(${target.time / 1000}, 0.0, ${target.time / 1000}, color="#FFFFFF")`;
+        case GS.EffectType.Black:
+            return `Fade(${target.time / 1000}, 0.0, ${target.time / 1000}, color="#000000")`;
+        case GS.EffectType.Flash:
+            return `Fade(${target.time / 4000}, 0.0, ${target.time / 4000 * 3}, color="#FFFFFF")`;
+        case GS.EffectType.Mosaic:
+            return `Pixellate(${target.time, 10})`;
+        case GS.EffectType.ScratchHorizontal: // 无法实现，使用Mosaic替代
+            return `Pixellate(${target.time, 10})`;
+        case GS.EffectType.ScratchVertical: // 无法实现，使用Mosaic替代
+            return `Pixellate(${target.time, 10})`;
+        case GS.EffectType.Spot: // 无法实现，采用中心淡入淡出替代
+            return `ImageDissolve("lib/lmeffect/center.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.Mask: // AYUMI里此效果等价于Fade
+            return `Dissolve(${target.time / 1000})`;
+        case GS.EffectType.MaskWhite: // AYUMI里此效果等价于Fade
+            return `Dissolve(${target.time / 1000})`;
+        case GS.EffectType.MaskBlack: // AYUMI里此效果等价于Fade
+            return `Dissolve(${target.time / 1000})`;
+        case GS.EffectType.ZoomSmall:
+            return `OldMoveTransition(${target.time / 1000}, enter_factory=ZoomInOut(0.01, 1.0))`;
+        case GS.EffectType.ZoomBig:
+            return `OldMoveTransition(${target.time / 1000}, enter_factory=ZoomInOut(1.0, 0.01))`;
+        case GS.EffectType.ZoomIn:
+            return `OldMoveTransition(${target.time / 1000}, enter_factory=ZoomInOut(0.01, 1.0), leave_factory=ZoomInOut(1.0, 0.01))`;
+        case GS.EffectType.Ripple: // 无法实现，采用中心淡入淡出替代
+            return `ImageDissolve("lib/lmeffect/center.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.BlurWhite: // 模糊效果性能消耗过大，舍弃之
+            return `Fade(${target.time / 1000}, 0.0, ${target.time / 1000}, color="#FFFFFF")`;
+        case GS.EffectType.BlurBlack: // 模糊效果性能消耗过大，舍弃之
+            return `Fade(${target.time / 1000}, 0.0, ${target.time / 1000}, color="#000000")`;
+        case GS.EffectType.TwistHorizontal: // 无法实现，采用CropMove替代
+            return `CropMove(${target.time / 1000}, "slide${target.reverse ? 'right' : 'left'}")`;
+        case GS.EffectType.TwistVertical: // 无法实现，采用CropMove替代
+            return `CropMove(${target.time / 1000}, "slide${target.reverse ? 'up' : 'bottom'}")`;
+        case GS.EffectType.Crack: // 无法实现，采用震动+淡出替代
+            return `ComposeTransition(Shake((0.5, 1.0, 0.5, 1.0), ${target.time / 1000}, dist=5), after=dissolve)`
+        case GS.EffectType.Clockhand:
+            return `ImageDissolve("lib/lmeffect/circle.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.RubberHorizontal: // 无法实现，使用Mosaic替代
+            return `Pixellate(${target.time, 10})`;
+        case GS.EffectType.RubberVertical: // 无法实现，使用Mosaic替代
+            return `Pixellate(${target.time, 10})`;
+        case GS.EffectType.FanCenter:
+            return `ImageDissolve("lib/lmeffect/fan.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.FanBorder:
+            return `ImageDissolve("lib/lmeffect/fan_h.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.Circle:
+            return `ImageDissolve("lib/lmeffect/center.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.BlockCoil:
+            return `ImageDissolve("lib/lmeffect/block.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+        case GS.EffectType.BlockRandom:
+            return `ImageDissolve("lib/lmeffect/block_random.png", ${target.time / 1000}, reverse=${target.reverse ? 'True' : 'False'})`;
+    }
 }

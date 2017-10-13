@@ -3,7 +3,8 @@ import {
     Project, BlockType, BlockCalculator, CalculatorType, CalculatorImageNewData, CalculatorSoundData, BlockMenu,
     BlockNormal, CommandType, CommandContentImageAnimation, CommandContentChangeImageAnimation,
     CommandContentSound, Animation, CalculatorCalcData, CommandContentNameTarget, CalculatorContinueData,
-    CalculatorVarDelData, CalculatorWhileData, BlockInput, BlockChoice
+    CalculatorVarDelData, CalculatorWhileData, BlockInput, BlockChoice, CalculatorObjDelData,
+    CommandContentText
 } from './include/GeneralScript';
 
 export var TranslationKeyword = {
@@ -281,6 +282,12 @@ export var TranslationVariable = {
     '&': 'and',
     '\\|': 'or',
     '\\r': '',
+    '\\\\\\\\': '/',
+    '\\+\\+': '|str_combine|',
+    'セーブキャプション': '_lm_save_caption',
+    '__メッセージ終了': '_lm_messagebox_finished',
+    'ステータスCGモードクリア': '_lm_cg_clear_list',
+    '選択実行中': '_lm_in_selection',
     '最終選択番号': '_lm_selected_index',
     '最終選択値': '_lm_selected_value',
     '選択番号': '_lm_selected_index',
@@ -403,7 +410,8 @@ export var TranslationVariable = {
     'Talk四朗雪緒F3': 'TalkShiroYukiF3',
     'Talk伊藤木村F3': 'TalkItouKimuraF3',
     'Talk伊藤木村F6': 'TalkItouKimuraF6',
-    'Talk小島岡島F3': 'TalkOkajimaKojimaF3',
+    'Talk岡島小島F3': 'TalkOkajimaKojimaF3',
+    'Talk小島岡島F3': 'TalkKojimaOkajimaF3',
     'Talk忍F2After': 'TalkShinobuF2After',
     'Talk泉F3After': 'TalkIzumiF3After',
     'Talk忍F6After': 'TalkShinobuF6After',
@@ -476,8 +484,130 @@ export var TranslationVariable = {
     'Talk忍': 'TalkShinobu',
     'Talk月': 'TalkTsuki',
     'Talk空': 'TalkSora',
-    'Talk清': 'TalkKiyo'
+    'Talk清': 'TalkKiyo',
+
+    '勝利': '胜利',
+    '失敗': '失败',
+
+    'TRUE': 'True',
+    'FALSE': 'False',
+    'true': 'True',
+    'false': 'False'
 }
+
+export var TranslationName = {
+    "友・翼・木村・伊藤・小岛 正": "森海友·一之濑翼·木村树·伊藤圭·小岛正",
+    "友・空・一之濑 翼": "森海友·赤峰空·一之濑翼",
+    "友・穗海 作哉": "森海友·穗海作哉",
+    "友・赤峰 空": "森海友·赤峰空",
+    "友・加藤 准太": "森海友·加藤准太",
+    "友・绫濑 忍": "森海友·绫濑忍",
+    "友・木村 树": "森海友·木村树",
+    "友・猫山 四朗": "森海友·猫山四朗",
+    "友・赤峰 月": "森海友·赤峰月",
+    "友・猫山 三朗": "森海友·猫山三朗",
+    "友・奥村 慎太郎": "森海友·奥村慎太郎",
+    "慎太郎・一之濑 翼": "奥村慎太郎·一之濑翼",
+    "慎太郎・绫濑 忍": "奥村慎太郎·绫濑忍",
+    "慎太郎・猫山 三朗": "奥村慎太郎·猫山三朗",
+    "翼・木村・伊藤 圭": "一之濑翼·木村树·伊藤圭",
+    "翼・赤峰 空": "一之濑翼·赤峰空",
+    "翼・绫濑 忍": "一之濑翼·绫濑忍",
+    "翼・穗海 作哉": "一之濑翼·穗海作哉",
+    "翼・奥村 慎太郎": "一之濑翼·奥村慎太郎",
+    "翼・森海 友": "一之濑翼·森海友",
+    "忍・森海 友": "绫濑忍·森海友",
+    "忍・赤峰 月": "绫濑忍·赤峰月",
+    "忍・一之濑 翼": "绫濑忍·一之濑翼",
+    "月・忍・赤峰 空": "赤峰月·绫濑忍·赤峰空",
+    "月・赤峰 空": "赤峰月·赤峰空",
+    "空・赤峰 月": "赤峰空·赤峰月",
+    "空・慎太郎・赤峰 月": "赤峰空·奥村慎太郎·赤峰月",
+    "三朗・森海 友": "猫山三朗·森海友",
+    "三朗・穗海 作哉": "猫山三朗·穗海作哉",
+    "作哉・赤峰 月": "穗海作哉·赤峰月",
+    "雪绪・作哉・猫山 四朗": "榊雪绪·穗海作哉·猫山四朗",
+    "雪绪・猫山 四朗": "榊雪绪·猫山四朗",
+    "松田・穗海 作哉": "松田健治·穗海作哉",
+    "松田・加藤・伊藤 圭": "松田健治·加藤准太·伊藤圭",
+    "松田・加藤・友・木村 树": "松田健治·加藤准太·森海友·木村树",
+    "松田・加藤 准太": "松田健治·加藤准太",
+    "小岛・奥村 慎太郎": "小岛正·奥村慎太郎",
+    "木村・伊藤 圭": "木村树·伊藤圭",
+    "木村・伊藤": "木村树·伊藤圭",
+    "伊藤・木村 树": "木村树·伊藤圭",
+    "尤西・世依木 守": "尤西·世依木守",
+    "尤西・森海 友": "尤西·森海友",
+    "加藤・森海 友": "加藤准太·森海友",
+    "加藤・空・森海 友": "加藤准太·赤峰空·森海友",
+    "中山・忍・清 武一": "绫濑忍·清武一",
+    "佐藤・冈岛 直弥": "佐藤光·冈岛直弥",
+    "妖怪A・一之濑 翼": "妖怪A·一之濑翼",
+    "天使・翼・悪魔": "天使·翼·恶魔",
+    "天使・悪魔一之濑 翼": "天使·恶魔",
+    "杉本・陆田": "杉本·陆田",
+    "雪绪・九尾": "雪绪·九尾",
+    "学生A・B": "学生A·学生B",
+    "布偶A・B": "布偶A·B",
+    "南・小林": "小林·南",
+    "小林・南": "小林·南",
+    "作哉（母亲役）": "作哉（母亲）",
+    "森海 友": "森海友",
+    "绫濑 忍": "绫濑忍",
+    "加藤 准太": "加藤准太",
+    "小一之濑 翼": "小翼",
+    "—一之濑 翼": "一之濑翼",
+    "一之濑 翼": "一之濑翼",
+    "穗海 作哉": "穗海作哉",
+    "穂海": "穗海作哉",
+    "奥村 慎太郎": "奥村慎太郎",
+    "松田 健治": "松田健治",
+    "猫山 三朗": "猫山三朗",
+    "木村 树": "木村树",
+    "赤峰 月": "赤峰月",
+    "赤峰 空": "赤峰空",
+    "冈岛 直弥": "冈岛直弥",
+    "小岛 正": "小岛正",
+    "泉 翔": "泉翔",
+    "泉 ": "泉翔",
+    "伊藤 圭": "伊藤圭",
+    "佐藤 光": "佐藤光",
+    "常磐 进": "常磐进",
+    "友森海 友": "森海友",
+    "诹访部 翔银时": "诹访部翔银时",
+    "猫山 四朗": "猫山四朗",
+    "榊 雪绪": "榊雪绪",
+    "世依木 守": "世依木守",
+    "清 武一": "清武一",
+    "中山 花音": "中山花音",
+    "吹奏楽部部员A": "吹奏乐部部员A",
+    "吹奏楽部部员B": "吹奏乐部部员B",
+    "吹奏楽部部员C": "吹奏乐部部员C",
+    "冈岛先辈": "冈岛雄介",
+    "冈岛 雄介": "冈岛雄介",
+    "友": "森海友",
+    "清": "清武一",
+    "天使一之濑 翼": "天使",
+    "悪魔一之濑 翼": "恶魔",
+    "诹访部 翔平": "诹访部翔平",
+    "中山 紫音": "中山紫音",
+    "中山先辈": "中山紫音",
+    "店主": "店长",
+    "滑子先生": "滑子",
+    "図书委员": "图书管理员",
+    "后辈A": "学弟A",
+    "学生１": "学生A",
+    "学生２": "学生B",
+    "由実啊姨": "由实阿姨",
+    "逆濑": "逆濑荒哉",
+    "一同": "大家",
+    "全员": "大家",
+    "吹奏楽部顾问": "吹奏乐部顾问",
+    "顾问": "吹奏乐部顾问",
+    "乘员": "乘务员",
+    "龙套妖怪Ｇ": "龙套妖怪G",
+    "先生": "老师"
+};
 
 export function replaceUrl(source: string): string {
     if (!source) return source;
@@ -489,12 +619,14 @@ export function replaceUrl(source: string): string {
     return result;
 }
 
-export function replaceName(name: string): string {
+export function replaceVariableName(name: string): string {
     if (!name) return name;
     let result = name;
     Object.keys(TranslationVariable).forEach(v => {
         result = result.replace(new RegExp(`${v}`, 'g'), TranslationVariable[v]);
     });
+    if (/\S+\[[\S\s]+]/g.test(result)) // 数组相关语句，需要将[0, 0]转换为[0][0]
+        result = result.substring(0, result.indexOf('[')) + result.substring(result.indexOf('['), result.indexOf(']')).replace(/,\s/g, '][') + result.substring(result.indexOf(']'));
     return result;
 }
 
@@ -506,12 +638,24 @@ export function convertUrl(source: string): string {
     result = result.replace(/グラフィック/g, 'images');
     result = result.replace(/サウンド/g, 'sound');
     result = result.replace(/\\/g, '/');
+    result = result.replace(/\/\//g, '/');
     result = result.replace(/\.gal/g, '.png');
     return result;
 }
 
+export function replaceTextName(name: string): string {
+    let keys = Object.keys(TranslationName);
+    for (let i = 0; i < keys.length; i++) {
+        if (name.startsWith(keys[i])) {
+            name = TranslationName[keys[i]] + name.substring(keys[i].length);
+            break;
+        }
+    }
+    return name;
+}
+
 export function mapUrl(project: Project): Project {
-    console.log('开始映射Ren\'Py工程路径……')
+    console.log('映射Ren\'Py工程路径……')
     console.log('处理CG列表……');
     project.cg = project.cg.map(cg => {
         console.log(`\t映射图像 ${cg}`);
@@ -529,12 +673,12 @@ export function mapUrl(project: Project): Project {
                         let codeData: CalculatorImageNewData = (code.data as CalculatorImageNewData);
                         console.log(`\t映射图像指令 ${codeData.source}`);
                         codeData.source = replaceUrl(codeData.source);
-                        console.log(`\t\t -> codeData.source`)
+                        console.log(`\t\t -> ${codeData.source}`)
                     } else if (code.type == CalculatorType.Sound) {
                         let codeData: CalculatorSoundData = (code.data as CalculatorSoundData);
                         console.log(`\t映射音频指令 ${codeData.source}`);
                         codeData.source = replaceUrl(codeData.source);
-                        console.log(`\t\t -> codeData.source`)
+                        console.log(`\t\t -> ${codeData.source}`)
                     }
                 });
             } else if (block.type == BlockType.Menu) {
@@ -607,15 +751,15 @@ export function mapUrl(project: Project): Project {
 }
 
 export function mapVariable(project: Project): Project {
-    console.log('开始映射变量名称……');
+    console.log('映射变量名称……');
     let globalVariables: string[] = new Array<string>();
     project.variable.forEach(variable => {
-        variable.name = replaceName(variable.name);
+        variable.name = replaceVariableName(variable.name);
         globalVariables.push(variable.name);
     });
     project.scene.forEach(scene => {
         scene.variable.forEach(variable => {
-            variable.name = replaceName(variable.name);
+            variable.name = replaceVariableName(variable.name);
         });
         scene.block.forEach(block => {
             if (block.type == BlockType.Normal) {
@@ -623,55 +767,88 @@ export function mapVariable(project: Project): Project {
                 data.content.forEach(content => {
                     if (content.type == CommandType.ShowVariableContent) {
                         let body: CommandContentNameTarget = content.content as CommandContentNameTarget;
-                        body.name = replaceName(body.name);
+                        body.name = replaceVariableName(body.name);
                     }
                 });
             } else if (block.type == BlockType.Calculator) {
                 let data: BlockCalculator = block.data;
                 data.variable.forEach(variable => {
-                    variable.name = replaceName(variable.name);
+                    variable.name = replaceVariableName(variable.name);
                 });
                 data.code.forEach(code => {
                     if (code.type == CalculatorType.Calc) {
                         let data: CalculatorCalcData = code.data as CalculatorCalcData;
-                        data.line = replaceName(data.line);
+                        data.line = replaceVariableName(data.line);
+                        data.line = replaceUrl(data.line);
                     } else if (code.type == CalculatorType.Continue || code.type == CalculatorType.Elseif || code.type == CalculatorType.If || code.type == CalculatorType.Break) {
                         let data: CalculatorContinueData = code.data as CalculatorContinueData;
-                        data.condition = replaceName(data.condition);
+                        data.condition = replaceVariableName(data.condition);
                     } else if (code.type == CalculatorType.VarNew || code.type == CalculatorType.VarDel) {
                         let data: CalculatorVarDelData = code.data as CalculatorVarDelData;
-                        data.name = replaceName(data.name);
+                        data.name = replaceVariableName(data.name);
                     } else if (code.type == CalculatorType.While) {
                         let data: CalculatorWhileData = code.data as CalculatorWhileData;
-                        data.init = replaceName(data.init);
-                        data.condition = replaceName(data.condition);
-                        data.loop = replaceName(data.loop);
+                        data.init = replaceVariableName(data.init);
+                        data.condition = replaceVariableName(data.condition);
+                        data.loop = replaceVariableName(data.loop);
+                    } else if (code.type == CalculatorType.ImageNew) {
+                        let data: CalculatorImageNewData = code.data as CalculatorImageNewData;
+                        data.source = replaceVariableName(data.source);
+                        data.name = replaceVariableName(data.name);
+                        if (typeof data.left == 'string')
+                            data.left = replaceVariableName(data.left);
+                        if (typeof data.top == 'string')
+                            data.top = replaceVariableName(data.top);
+                    } else if (code.type == CalculatorType.Sound) {
+                        let data: CalculatorImageNewData = code.data as CalculatorImageNewData;
+                        data.source = replaceVariableName(data.source);
+                        data.name = replaceVariableName(data.name);
+                    } else if (code.type == CalculatorType.ObjDel) {
+                        let data: CalculatorObjDelData = code.data as CalculatorObjDelData;
+                        data.name = replaceVariableName(data.name);
                     }
                 });
             } else if (block.type == BlockType.Menu) {
                 let data: BlockMenu = block.data;
                 data.visibleCondition.forEach(condition => {
                     condition.condition.forEach(v => {
-                        v.content = replaceName(v.content);
+                        v.content = replaceVariableName(v.content);
                     });
                 });
             } else if (block.type == BlockType.Input) {
                 let data: BlockInput = block.data;
                 data.content.forEach(content => {
-                    content.targetVariable = replaceName(content.targetVariable);
+                    content.targetVariable = replaceVariableName(content.targetVariable);
                     if (globalVariables.includes(content.targetVariable))
                         content.targetVariable = 'persistent.' + content.targetVariable;
                 });
             }
             block.next.forEach(next => {
                 next.condition.forEach(condition => {
-                    condition.content = replaceName(condition.content);
+                    condition.content = replaceVariableName(condition.content);
                 });
             });
         });
     });
     return project;
 };
+
+export function mapName(project: Project): Project {
+    project.scene.forEach(scene => {
+        scene.block.forEach(block => {
+            if (block.type == BlockType.Normal) {
+                let data: BlockNormal = block.data;
+                data.content.forEach(command => {
+                    if (command.type == CommandType.Text) {
+                        let commandContent: CommandContentText = (command.content as CommandContentText);
+                        commandContent.text = replaceTextName(commandContent.text);
+                    }
+                });
+            }
+        });
+    });
+    return project;
+}
 
 function mapAnimation(content: Animation[]): void {
     content.forEach(anim => {

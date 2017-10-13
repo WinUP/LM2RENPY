@@ -185,6 +185,7 @@ export enum CalculatorType {
     ObjDel,
     ImageNew,
     Sound,
+    StopMedia,
     TextIns
 }
 
@@ -249,8 +250,8 @@ export interface CalculatorObjDelData extends CalculatorData {
 export interface CalculatorImageNewData extends CalculatorData {
     name: string;
     source: string;
-    left: number;
-    top: number;
+    left: number | string;
+    top: number | string;
     priority: number;
 }
 
@@ -258,6 +259,12 @@ export interface CalculatorSoundData extends CalculatorData {
     name: string;
     source: string;
     repeat: boolean;
+}
+
+export interface CalculatorStopMediaData extends CalculatorData {
+    name: string;
+    time: number;
+    wait: boolean;
 }
 
 export interface CalculatorTextInsData extends CalculatorData {
@@ -319,6 +326,7 @@ export interface CommandContentChangeImageAnimation extends CommandContentChange
 
 export interface CommandContentEffect extends CommandContentNameTarget {
     type: EffectType;
+    time: number;
     reverse: boolean;
     source?: string;
     default: boolean;
