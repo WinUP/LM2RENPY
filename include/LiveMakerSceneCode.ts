@@ -1,9 +1,9 @@
-export interface LiveMakerSceneCommand {
-    type: LiveMakerSceneCommandType;
-    param: LiveMakerSceneCommandParam;
+export interface Command {
+    type: CommandType;
+    param: CommandParam;
 }
 
-export enum LiveMakerSceneCommandType {
+export enum CommandType {
     PLAINTEXT = "PLAINTEXT",
     SCENARIO = "SCENARIO", // 没有用
     FLIP = "FLIP",
@@ -42,11 +42,11 @@ export enum LiveMakerSceneCommandType {
     VAR = "VAR"
 }
 
-export interface LiveMakerSceneCommandParam {
+export interface CommandParam {
     [name: string]: string;
 }
 
-export enum LiveMakerSceneEffectType {
+export enum EffectType {
     NONE = "NONE",
     FADE = "FADE",
     BLINDH = "BLINDH",
@@ -88,7 +88,7 @@ export enum LiveMakerSceneEffectType {
     BLOCKRANDOM  = "BLOCKRANDOM"
 }
 
-export var LiveMakerPriority: { [key: string]: number } = {
+export var Priority: { [key: string]: number } = {
     '背景奥': 0,
     '背景手前': 100,
     'キャラクタ奥': 200,

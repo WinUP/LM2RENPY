@@ -1,5 +1,6 @@
-import * as GS from './include/GeneralScript';
 import * as OpenCC from 'node-opencc';
+
+import * as GeneralScript from './include/GeneralScript';
 
 export var CompatibleWords = {
     'ー': '—',
@@ -61,27 +62,27 @@ export function replaceCompatibleWord(name: string): string {
     return result;
 }
 
-export function toSimplifiedChinese(project: GS.Project): GS.Project {
+export function toSimplifiedChinese(project: GeneralScript.Project): GeneralScript.Project {
     project.scene.forEach(scene => {
         scene.block.forEach(block => {
-            if (block.type == GS.BlockType.Choice) {
-                let data: GS.BlockChoice = block.data;
+            if (block.type == GeneralScript.BlockType.Choice) {
+                let data = block.data as GeneralScript.BlockDataChoice;
                 data.choice.forEach(choice => {
                     choice.title = OpenCC.traditionalToSimplified(choice.title);
                     choice.title = replaceCompatibleWord(choice.title);
                 });
-            } else if (block.type == GS.BlockType.Input) {
-                let data: GS.BlockInput = block.data;
+            } else if (block.type == GeneralScript.BlockType.Input) {
+                let data = block.data as GeneralScript.BlockDataInput;
                 data.title = OpenCC.traditionalToSimplified(data.title);
                 data.content.forEach(content => {
                     content.title = OpenCC.traditionalToSimplified(content.title);
                     content.title = replaceCompatibleWord(content.title);
                 });
-            } else if (block.type == GS.BlockType.Normal) {
-                let data: GS.BlockNormal = block.data;
+            } else if (block.type == GeneralScript.BlockType.Normal) {
+                let data = block.data as GeneralScript.BlockDataNormal;
                 data.content.forEach(content => {
-                    if (content.type == GS.CommandType.Text) {
-                        let commandData: GS.CommandContentText = content.content as GS.CommandContentText;
+                    if (content.type == GeneralScript.CommandType.Text) {
+                        let commandData: GeneralScript.CommandContentText = content.content as GeneralScript.CommandContentText;
                         commandData.text = OpenCC.traditionalToSimplified(commandData.text);
                         commandData.text = replaceCompatibleWord(commandData.text);
                     }

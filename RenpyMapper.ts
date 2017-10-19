@@ -1,11 +1,5 @@
 import { PROJECT_RESOURCE_ROOT } from './LiveMakerParser';
-import {
-    Project, BlockType, BlockCalculator, CalculatorType, CalculatorImageNewData, CalculatorSoundData, BlockMenu,
-    BlockNormal, CommandType, CommandContentImageAnimation, CommandContentChangeImageAnimation,
-    CommandContentSound, Animation, CalculatorCalcData, CommandContentNameTarget, CalculatorContinueData,
-    CalculatorVarDelData, CalculatorWhileData, BlockInput, BlockChoice, CalculatorObjDelData,
-    CommandContentText
-} from './include/GeneralScript';
+import * as GeneralScript from './include/GeneralScript';
 
 export var TranslationKeyword = {
     '\\[hover]': 'hover',
@@ -654,105 +648,109 @@ export function replaceTextName(name: string): string {
     return name;
 }
 
-export function mapUrl(project: Project): Project {
-    console.log('映射Ren\'Py工程路径……')
-    console.log('处理CG列表……');
-    project.cg = project.cg.map(cg => {
-        console.log(`\t映射图像 ${cg}`);
+export function mapUrl(project: GeneralScript.Project): GeneralScript.Project {
+    console.log('Map resource file path...')
+    console.log('Map gallery...');
+    project.gallery = project.gallery.map(cg => {
+        console.log(`\tImage ${cg}`);
         cg = replaceUrl(cg)
         console.log(`\t\t -> ${cg}`);
         return cg;
     });
-    console.log('处理场景……');
+    console.log('Map extended menu file...');
+    Object.keys(project.extendedResource.menuFile).forEach(menuPath => {
+        let menu = project.extendedResource.menuFile[menuPath];
+        menu.item.forEach(item => {
+            if (item.idleImage) {
+                console.log(`\tImage ${item.idleImage}`);
+                item.idleImage = replaceUrl(item.idleImage);
+                console.log(`\t\t -> ${item.idleImage}`);
+            }
+            if (item.hoverImage) {
+                console.log(`\tImage ${item.hoverImage}`);
+                item.hoverImage = replaceUrl(item.hoverImage);
+                console.log(`\t\t -> ${item.hoverImage}`);
+            }
+            if (item.preview.image) {
+                console.log(`\tImage ${item.preview.image}`);
+                item.preview.image = replaceUrl(item.preview.image);
+                console.log(`\t\t -> ${item.preview.image}`);
+            }
+        });
+    });
+    console.log('Map extended animation file...');
+    Object.keys(project.extendedResource.animationFile).forEach(animationPath => {
+        let animation = project.extendedResource.animationFile[animationPath];
+        animation.forEach(anim => {
+            console.log(`\tImage ${anim.source}`);
+            anim.source = replaceUrl(anim.source);
+            console.log(`\t\t -> ${anim.source}`);
+        });
+    });
+    console.log('Map scene...');
     project.scene.forEach(scene => {
         scene.block.forEach(block => {
-            if (block.type == BlockType.Calculator) {
-                let data: BlockCalculator = block.data;
+            if (block.type == GeneralScript.BlockType.Calculator) {
+                let data: GeneralScript.BlockDataCalculator = block.data as GeneralScript.BlockDataCalculator;
                 data.code.forEach(code => {
-                    if (code.type == CalculatorType.ImageNew) {
-                        let codeData: CalculatorImageNewData = (code.data as CalculatorImageNewData);
-                        console.log(`\t映射图像指令 ${codeData.source}`);
+                    if (code.type == GeneralScript.CalculatorType.CreateImage) {
+                        let codeData = code.data as GeneralScript.CalculatorDataCreateImage;
+                        console.log(`\tImage ${codeData.source}`);
                         codeData.source = replaceUrl(codeData.source);
                         console.log(`\t\t -> ${codeData.source}`)
-                    } else if (code.type == CalculatorType.Sound) {
-                        let codeData: CalculatorSoundData = (code.data as CalculatorSoundData);
-                        console.log(`\t映射音频指令 ${codeData.source}`);
+                    } else if (code.type == GeneralScript.CalculatorType.PlaySound) {
+                        let codeData = code.data as GeneralScript.CalculatorDataSound;
+                        console.log(`\tSound ${codeData.source}`);
                         codeData.source = replaceUrl(codeData.source);
                         console.log(`\t\t -> ${codeData.source}`)
                     }
                 });
-            } else if (block.type == BlockType.Menu) {
-                let data: BlockMenu = block.data;
+            } else if (block.type == GeneralScript.BlockType.Menu) {
+                let data = block.data as GeneralScript.BlockDataMenu;
                 if (data.clickSound) {
-                    console.log(`\t映射选单音效 ${data.clickSound}`);
+                    console.log(`\tSound ${data.clickSound}`);
                     data.clickSound = replaceUrl(data.clickSound);
                     console.log(`\t\t -> ${data.clickSound}`);
                 }
                 if (data.hoverSound) {
-                    console.log(`\t映射滑过音效 ${data.hoverSound}`);
+                    console.log(`\tSound ${data.hoverSound}`);
                     data.hoverSound = replaceUrl(data.hoverSound);
                     console.log(`\t\t -> ${data.hoverSound}`);
                 }
-                data.item.forEach(item => {
-                    if (item.imagePath) {
-                        console.log(`\t映射选单按钮 ${item.imagePath}`);
-                        item.imagePath = replaceUrl(item.imagePath);
-                        console.log(`\t\t -> ${item.imagePath}`);
-                    }
-                    if (item.hoverPath) {
-                        console.log(`\t映射选单激活 ${item.hoverPath}`);
-                        item.hoverPath = replaceUrl(item.hoverPath);
-                        console.log(`\t\t -> ${item.hoverPath}`);
-                    }
-                    if (item.previewPath) {
-                        console.log(`\t映射选单预览 ${item.previewPath}`);
-                        item.previewPath = replaceUrl(item.previewPath);
-                        console.log(`\t\t -> ${item.previewPath}`);
-                    }
-                });
-            } else if (block.type == BlockType.Normal) {
-                let data: BlockNormal = block.data;
+            } else if (block.type == GeneralScript.BlockType.Normal) {
+                let data = block.data as GeneralScript.BlockDataNormal;
                 data.content.forEach(command => {
-                    if (command.type == CommandType.Image) {
-                        let commandContent: CommandContentImageAnimation = (command.content as CommandContentImageAnimation);
-                        if (!commandContent.animation) {
-                            console.log(`\t映射图像 ${commandContent.source}`);
+                    if (command.type == GeneralScript.CommandType.Image) {
+                        let commandContent = command.content as GeneralScript.CommandContentImage;
+                        if (commandContent.source.endsWith('.gal')) {
+                            console.log(`\tImage ${commandContent.source}`);
                             commandContent.source = replaceUrl(commandContent.source);
                             console.log(`\t\t -> ${commandContent.source}`);
-                        } else {
-                            mapAnimation(commandContent.animation);
                         }
-                    } else if (command.type == CommandType.ChangeImage) {
-                        let commandContent: CommandContentChangeImageAnimation = (command.content as CommandContentChangeImageAnimation);
-                        if (!commandContent.animation) {
-                            console.log(`\t映射图像 ${commandContent.source}`);
+                    } else if (command.type == GeneralScript.CommandType.ChangeImage) {
+                        let commandContent = (command.content as GeneralScript.CommandContentChangeImage);
+                        if (commandContent.source.endsWith('.gal')) {
+                            console.log(`\tImage ${commandContent.source}`);
                             commandContent.source = replaceUrl(commandContent.source);
                             console.log(`\t\t -> ${commandContent.source}`);
-                        } else {
-                            mapAnimation(commandContent.animation);
                         }
-                    } else if (command.type == CommandType.Sound) {
-                        let commandContent: CommandContentSound = (command.content as CommandContentSound);
-                        console.log(`\t映射音频 ${commandContent.source}`);
+                    } else if (command.type == GeneralScript.CommandType.Sound) {
+                        let commandContent = command.content as GeneralScript.CommandContentSound;
+                        console.log(`\tSound ${commandContent.source}`);
                         commandContent.source = replaceUrl(commandContent.source);
                         console.log(`\t\t -> ${commandContent.source}`);
                     }
                 });
-            } else if (block.type == BlockType.Choice) {
-                let data: BlockChoice = block.data;
-                if (data.time instanceof Object) {
-                    mapAnimation(data.time as Animation[]);
-                }
             }
         });
     });
-    console.log('映射完成');
+    console.log('Map resource file path finished.');
     return project;
 }
 
-export function mapVariable(project: Project): Project {
-    console.log('映射变量名称……');
-    let globalVariables: string[] = new Array<string>();
+export function mapVariable(project: GeneralScript.Project): GeneralScript.Project {
+    console.log('Map variable name...');
+    let globalVariables: string[] = [];
     project.variable.forEach(variable => {
         variable.name = replaceVariableName(variable.name);
         globalVariables.push(variable.name);
@@ -762,65 +760,71 @@ export function mapVariable(project: Project): Project {
             variable.name = replaceVariableName(variable.name);
         });
         scene.block.forEach(block => {
-            if (block.type == BlockType.Normal) {
-                let data: BlockNormal = block.data;
+            if (block.type == GeneralScript.BlockType.Normal) {
+                let data = block.data as GeneralScript.BlockDataNormal;
                 data.content.forEach(content => {
-                    if (content.type == CommandType.ShowVariableContent) {
-                        let body: CommandContentNameTarget = content.content as CommandContentNameTarget;
+                    if (content.type == GeneralScript.CommandType.ShowVariableContent) {
+                        let body = content.content as GeneralScript.CommandContentNameTarget;
                         body.name = replaceVariableName(body.name);
                     }
                 });
-            } else if (block.type == BlockType.Calculator) {
-                let data: BlockCalculator = block.data;
+            } else if (block.type == GeneralScript.BlockType.Calculator) {
+                let data = block.data as GeneralScript.BlockDataCalculator;
                 data.variable.forEach(variable => {
                     variable.name = replaceVariableName(variable.name);
                 });
                 data.code.forEach(code => {
-                    if (code.type == CalculatorType.Calc) {
-                        let data: CalculatorCalcData = code.data as CalculatorCalcData;
-                        data.line = replaceVariableName(data.line);
-                        data.line = replaceUrl(data.line);
-                    } else if (code.type == CalculatorType.Continue || code.type == CalculatorType.Elseif || code.type == CalculatorType.If || code.type == CalculatorType.Break) {
-                        let data: CalculatorContinueData = code.data as CalculatorContinueData;
+                    if (code.type == GeneralScript.CalculatorType.RawCode) {
+                        let data = code.data as GeneralScript.CalculatorDataRawCode;
+                        data.content = replaceVariableName(data.content);
+                        data.content = replaceUrl(data.content);
+                    } else if (code.type == GeneralScript.CalculatorType.Continue ||
+                               code.type == GeneralScript.CalculatorType.Elseif ||
+                               code.type == GeneralScript.CalculatorType.If ||
+                               code.type == GeneralScript.CalculatorType.Break) {
+                        let data = code.data as GeneralScript.CalcualtorDataConditionBase;
                         data.condition = replaceVariableName(data.condition);
-                    } else if (code.type == CalculatorType.VarNew || code.type == CalculatorType.VarDel) {
-                        let data: CalculatorVarDelData = code.data as CalculatorVarDelData;
-                        data.name = replaceVariableName(data.name);
-                    } else if (code.type == CalculatorType.While) {
-                        let data: CalculatorWhileData = code.data as CalculatorWhileData;
+                    } else if (code.type == GeneralScript.CalculatorType.ClearVariable) {
+                        let data = code.data as GeneralScript.CalculatorDataClearVariable;
+                        data.content = replaceVariableName(data.content);
+                    } else if (code.type == GeneralScript.CalculatorType.CreateVariable) {
+                        let data = code.data as GeneralScript.CalculatorDataCreateVariable;
+                        data.content.name = replaceVariableName(data.content.name);
+                    } else if (code.type == GeneralScript.CalculatorType.While) {
+                        let data = code.data as GeneralScript.CalculatorDataWhile;
                         data.init = replaceVariableName(data.init);
                         data.condition = replaceVariableName(data.condition);
                         data.loop = replaceVariableName(data.loop);
-                    } else if (code.type == CalculatorType.ImageNew) {
-                        let data: CalculatorImageNewData = code.data as CalculatorImageNewData;
+                    } else if (code.type == GeneralScript.CalculatorType.CreateImage) {
+                        let data = code.data as GeneralScript.CalculatorDataCreateImage;
                         data.source = replaceVariableName(data.source);
                         data.name = replaceVariableName(data.name);
                         if (typeof data.left == 'string')
                             data.left = replaceVariableName(data.left);
                         if (typeof data.top == 'string')
                             data.top = replaceVariableName(data.top);
-                    } else if (code.type == CalculatorType.Sound) {
-                        let data: CalculatorImageNewData = code.data as CalculatorImageNewData;
+                    } else if (code.type == GeneralScript.CalculatorType.PlaySound) {
+                        let data = code.data as GeneralScript.CalculatorDataSound;
                         data.source = replaceVariableName(data.source);
                         data.name = replaceVariableName(data.name);
-                    } else if (code.type == CalculatorType.ObjDel) {
-                        let data: CalculatorObjDelData = code.data as CalculatorObjDelData;
-                        data.name = replaceVariableName(data.name);
+                    } else if (code.type == GeneralScript.CalculatorType.DeleteObject) {
+                        let data = code.data as GeneralScript.CalculatorDataDeleteObject;
+                        data.content = replaceVariableName(data.content);
                     }
                 });
-            } else if (block.type == BlockType.Menu) {
-                let data: BlockMenu = block.data;
-                data.visibleCondition.forEach(condition => {
+            } else if (block.type == GeneralScript.BlockType.Menu) {
+                let data = block.data as GeneralScript.BlockDataMenu;
+                data.condition.forEach(condition => {
                     condition.condition.forEach(v => {
                         v.content = replaceVariableName(v.content);
                     });
                 });
-            } else if (block.type == BlockType.Input) {
-                let data: BlockInput = block.data;
+            } else if (block.type == GeneralScript.BlockType.Input) {
+                let data = block.data as GeneralScript.BlockDataInput;
                 data.content.forEach(content => {
-                    content.targetVariable = replaceVariableName(content.targetVariable);
-                    if (globalVariables.includes(content.targetVariable))
-                        content.targetVariable = 'persistent.' + content.targetVariable;
+                    content.storedVariableName = replaceVariableName(content.storedVariableName);
+                    if (globalVariables.includes(content.storedVariableName))
+                        content.storedVariableName = 'persistent.' + content.storedVariableName;
                 });
             }
             block.next.forEach(next => {
@@ -830,30 +834,25 @@ export function mapVariable(project: Project): Project {
             });
         });
     });
+    console.log('Map variable name finished.');
     return project;
-};
+}
 
-export function mapName(project: Project): Project {
+export function mapName(project: GeneralScript.Project): GeneralScript.Project {
+    console.log('Check character name...')
     project.scene.forEach(scene => {
         scene.block.forEach(block => {
-            if (block.type == BlockType.Normal) {
-                let data: BlockNormal = block.data;
+            if (block.type == GeneralScript.BlockType.Normal) {
+                let data = block.data as GeneralScript.BlockDataNormal;
                 data.content.forEach(command => {
-                    if (command.type == CommandType.Text) {
-                        let commandContent: CommandContentText = (command.content as CommandContentText);
+                    if (command.type == GeneralScript.CommandType.Text) {
+                        let commandContent = command.content as GeneralScript.CommandContentText;
                         commandContent.text = replaceTextName(commandContent.text);
                     }
                 });
             }
         });
     });
+    console.log('Check character name finished.');
     return project;
-}
-
-function mapAnimation(content: Animation[]): void {
-    content.forEach(anim => {
-        console.log(`\t映射图像 ${anim.source}`);
-        anim.source = replaceUrl(anim.source);
-        console.log(`\t\t -> ${anim.source}`);
-    });
 }

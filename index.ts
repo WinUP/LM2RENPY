@@ -1,58 +1,68 @@
-import * as iconv from 'iconv-lite';
-import * as xml2js from 'xml2js';
-import * as fs from 'fs';
-import * as path from 'path';
+import * as Iconv from 'iconv-lite';
+import * as Xml from 'fast-xml-parser';
+import * as File from 'fs';
+import * as Path from 'path';
 
-import { TranslationKeyword, mapUrl, mapVariable } from './RenpyMapper';
-import { parseProject, PROJECT_RESOURCE_ROOT } from './LiveMakerParser';
-import { Project, BlockType, BlockCalculator } from './include/GeneralScript';
-import { toSimplifiedChinese } from './LanguageConverter';
-import { generateRenpyCode } from './RenpyGenerator';
-import { LiveMakerProject } from './include/LiveMakerProject';
-
-//function replaceName(root: string): void {
-//    let children = fs.readdirSync(root);
-//    for (let i = 0; i < children.length; i++) {
-//        let source = path.join(root, children[i]);
-//        children[i] = replaceUrl(children[i]);
-//        let newPath = path.join(root, children[i]);
-//        if (source != newPath)
-//            fs.renameSync(source, newPath);
-//        if (fs.lstatSync(newPath).isDirectory()) {
-//            replaceName(newPath);
-//        }
-//    }
-//}
-//replaceName('C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\images');
-//replaceName('C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\sound');
+import * as LanguageConverter from './LanguageConverter';
+import * as LiveMakerParser from './LiveMakerParser';
+//import * as RenpyGenerator from './RenpyGenerator';
+import * as GeneralScript from './include/GeneralScript';
+import * as LiveProject from './include/LiveMakerProject';
+import * as RenpyMapper from './RenpyMapper';
+import * as Utilities from './Utilities';
 
 const TARGET_CODE_ROOT = 'C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\livemaker';
 
-let str = iconv.decode(fs.readFileSync('data/novel.prj'), 'shift-jis');
-let project: Project = null;
+let originalSource = Iconv.decode(File.readFileSync('data/novel.prj'), 'shift-jis');
+let originalProject: LiveProject.Project = Xml.parse(originalSource, Utilities.xmlParseOptions).Project;
+let project: GeneralScript.Project = null;
 
-xml2js.parseString(str, { explicitArray : false, ignoreAttrs : false }, (err, result) => {
-    //console.log('LiverMaker工程转换器 ©2017 同人社团GILESFVK ËKITES');
-    //console.log('GNU LESSER GENERAL PUBLIC LICENSE Version 3');
-    //console.log(`资源文件引用目录：${PROJECT_RESOURCE_ROOT}`);
-    //project = parseProject(result.Project);
-    //fs.writeFileSync('general_script.txt', JSON.stringify(project, null, 2));
-    //console.log(`通用脚本文件已保存至general_script.txt（${fs.statSync('general_script.txt').size}字节）`);
-    //console.log('');
-    //project = mapUrl(project);
-    //project = mapVariable(project);
-    //fs.writeFileSync('project_structure.txt', JSON.stringify(project, null, 2));
-    //console.log(`Ren'Py工程映射文件已保存至project_structure.txt（${fs.statSync('project_structure.txt').size}字节）`);
-    //console.log('转换为简体中文……');
-    //project = toSimplifiedChinese(project);
-    //fs.writeFileSync('project_structure_cn.txt', JSON.stringify(project, null, 2));
-    //console.log(`简体中文工程文件已保存至project_structure_cn.txt（${fs.statSync('project_structure_cn.txt').size}字节）`);
-    console.log('使用缓存文件');
-    project = JSON.parse(fs.readFileSync('project_structure_cn.txt').toString());
-    console.log('生成Ren\'Py代码……');
-    console.log(`目标文件夹：${TARGET_CODE_ROOT}`);
-    generateRenpyCode(project, TARGET_CODE_ROOT);
-});
+let regenerate: boolean = !File.existsSync('lr_project_structure_local.txt');
+
+if (regenerate) {
+    console.log('LiverMaker Project Converter ©2017 GILESFVK ËKITES');
+    console.log('GNU LESSER GENERAL PUBLIC LICENSE Version 3');
+    console.log(`Resource directory: ${LiveMakerParser.PROJECT_RESOURCE_ROOT}`);
+    project = LiveMakerParser.parseProject(originalProject);
+    File.writeFileSync('lr_general_script.txt', JSON.stringify(project, null, 2));
+    console.log(`General script file had saved to lr_general_script.txt [${File.statSync('lr_general_script.txt').size} bytes]`);
+    console.log('');
+    project = RenpyMapper.mapUrl(project);
+    project = RenpyMapper.mapVariable(project);
+    File.writeFileSync('lr_project_structure.txt', JSON.stringify(project, null, 2));
+    console.log(`Ren'Py project structure had saved to lr_project_structure.txt [${File.statSync('lr_project_structure.txt').size} bytes]`);
+    console.log('Convert from traditional chinese to simplified chinese...');
+    project = LanguageConverter.toSimplifiedChinese(project);
+    project = RenpyMapper.mapName(project);
+    File.writeFileSync('lr_project_structure_local.txt', JSON.stringify(project, null, 2));
+    console.log(`Project structure had saved to lr_project_structure_local.txt [${File.statSync('lr_project_structure_local.txt').size} bytes]`);
+} else {
+    console.log('Use cache file lr_project_structure_local.txt');
+    project = JSON.parse(File.readFileSync('lr_project_structure_local.txt').toString());
+}
+console.log('Analysing project...');
+
+
+//console.log('Generate Ren\'Py code...');
+//console.log(`Target folder: ${TARGET_CODE_ROOT}`);
+//RenpyGenerator.generateRenpyCode(project, TARGET_CODE_ROOT);
+
+// This part is in purpose to replace all real resource file's name with the help of replaceUrl
+// function replaceName(root: string): void {
+//     let children = fs.readdirSync(root);
+//     for (let i = 0; i < children.length; i++) {
+//         let source = path.join(root, children[i]);
+//         children[i] = replaceUrl(children[i]);
+//         let newPath = path.join(root, children[i]);
+//         if (source != newPath)
+//             fs.renameSync(source, newPath);
+//         if (fs.lstatSync(newPath).isDirectory()) {
+//             replaceName(newPath);
+//         }
+//     }
+// }
+// replaceName('C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\images');
+// replaceName('C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\sound');
 
 /** 以下代码是手动转换部分数据时使用的自动生成代码，现已无用 */
 /**

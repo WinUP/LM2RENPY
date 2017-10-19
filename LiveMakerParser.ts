@@ -1,257 +1,244 @@
-import {
-    Scene, Variable, VariableScope, VariableType, Block, BlockType, BlockCalculator, Code, CalculatorType,
-    CalculatorCalcData, CalculatorBreakData, CalculatorCallData, CalculatorContinueData, CalculatorElseData,
-    CalculatorElseifData, CalculatorIfData, CalculatorImageNewData, CalculatorObjDelData, CalculatorSoundData,
-    CalculatorTextInsData, CalculatorVarDelData, CalculatorVarNewData, CalculatorWaitData, CalculatorWhileData,
-    BlockChoice, Align, Choice, BlockInput, Input, BlockJump, BlockNavigator, BlockNormal, Command, CommandType,
-    CommandContentText, EffectType, CommandContentEffect, CommandContentToggle, CommandContentWait, TextSpeed,
-    CommandContentTextSpeed, CommandContentNameTarget, CommandContentTimeTarget, CommandContentMovie, RepeatMode,
-    CommandContentQuake, QuakeType, Soundtrack, CommandContentSound, CommandContentStopSound, CommandContentChangeVolume,
-    CommandContentImage, CommandContentChangeImage, CommandContentDestroyImage, Project, MessageboxFont, Messagebox,
-    ConditionContent, Condition, BlockMenu, BlockMenuCondition, BlockMenuItem, Animation, Point, Rectangle,
-    CommandContentImageAnimation, Ease, CommandContentChangeImageAnimation, SystemPage
-} from './include/GeneralScript';
-import {
-    LiveMakerProject, LiveMakerProjectSceneVar, LiveMakerProjectVarItemScope, LiveMakerProjectVarItemType,
-    BooleanInString, LiveMakerProjectNodeType, LiveMakerProjectNodeCalc, LiveMakerProjectCalcItem,
-    LiveMakerProjectVarCommandType, LiveMakerProjectCalcVarItemScope, LiveMakerProjectNodeChoice,
-    LiveMakerProjectNodeInput, LiveMakerProjectNodeJump, LiveMakerProjectNodeMenu, LiveMakerProjectNodeNavigate,
-    LiveMakerProjectNodeScene
-} from './include/LiveMakerProject';
-import {
-    LiveMakerSceneCommand, LiveMakerSceneCommandParam, LiveMakerSceneCommandType, LiveMakerSceneEffectType,
-    LiveMakerPriority
-} from './include/LiveMakerSceneCode';
-import { LiveMakerMenu, LiveMakerMenuItem } from './include/LiveMakerMenu';
-import { toLiveMakerHexName } from './Utilities';
+import * as GeneralScript from './include/GeneralScript';
+import * as LiveProject from './include/LiveMakerProject';
+import * as LiveScene from './include/LiveMakerSceneCode';
+import * as Utilities from './Utilities';
+import * as Converter from './Converter';
+import * as LiveMenu from './include/LiveMakerMenu';
 
+import * as Iconv from 'iconv-lite';
+import * as Path from 'path';
+import * as File from 'fs';
+import * as Xml from 'fast-xml-parser';
 import * as _ from 'lodash';
-import * as fs from 'fs';
-import * as iconv from 'iconv-lite';
-import * as xml from 'fast-xml-parser';
-import * as fs_path from 'path';
 
-export const PLAIN_TEXT_CODE_TYPE = LiveMakerSceneCommandType.PLAINTEXT;
 export const PROJECT_RESOURCE_ROOT = 'C:\\Users\\lghol\\OneDrive\\Backup\\SCB Project\\runimage\\';
 
-let totalNodeCount = 0;
-let totalSceneCount = 0;
-let totalFileCount = 0;
-let totalJumpCount = 0;
-let totalCommandCount = 0;
-let totalMenuCount = 0;
+let Analysis: {
+    dialogueBox: number,
+    scene: number,
+    block: number,
+    file: number,
+    menuOption: number,
+    jump: number,
+    command: number
+} = {
+    dialogueBox: 0,
+    scene: 0,
+    block: 0,
+    file: 0,
+    menuOption: 0,
+    jump: 0,
+    command: 0
+};
 
-export function parseProject(source: LiveMakerProject): Project {
-    let sceneResult: Scene[] = [];
-    let project: Project = {
+export function parseProject(source: LiveProject.Project): GeneralScript.Project {
+    console.log('Loading project structure...');
+    source = JSON.parse(JSON.stringify(source).replace(/&quot;/g, '\\"')
+                                              .replace(/&amp;/g, '&')
+                                              .replace(/&lt;/g, '<')
+                                              .replace(/&gt;/g, '>')
+                                              .replace(/&#9;/g, ' '));
+    let sceneResult: LiveProject.Scene[] = [];
+    let generalProject: GeneralScript.Project = {
         title: source.Title,
-        width: +source.ScreenCX,
-        height: +source.ScreenCY,
-        background: source.BGColor,
+        screenSize: { width: source.ScreenCX, height: source.ScreenCY },
+        backgroundColor: source.BGColor,
         scene: [],
-        variable: _.flatten([source.Var.Item]).map(v => Converter.lvarToVariable(v)),
-        messagebox: [],
-        cg: source.CGMode.List.Item
+        variable: Utilities.findItemInChildren(source.Var).map(v => Converter.sceneVariable(v)),
+        dialogueBox: [],
+        gallery: Utilities.arrayIfNeeded(source.CGMode.List.Item),
+        extendedResource: {
+            menuFile: {},
+            animationFile: {}
+        }
     };
-    let messageboxResult: Messagebox[] = [];
-    source.MessageBox.Item.forEach(liveMessagebox => {
-        let messagebox: Messagebox = {
-            name: liveMessagebox.Name,
+
+    console.log('Loading messageboxes...');
+    // Messagebox
+    Utilities.arrayIfNeeded(source.MessageBox.Item).forEach(messagebox => {
+        Analysis.dialogueBox ++;
+        console.log(`Find messagebox with name "${messagebox.Name}"`);
+        generalProject.dialogueBox.push({
+            name: messagebox.Name,
             font: {
-                antialias: Converter.booleanStringToBoolean(liveMessagebox.Font.Antialias),
-                size: +liveMessagebox.Font.Size,
-                lineMargin: +liveMessagebox.Font.Space,
-                color: liveMessagebox.Font.Color,
-                colorLink: liveMessagebox.Font.LinkColor,
-                colorHover: liveMessagebox.Font.HoverColor,
-                shadow: +liveMessagebox.Font.Shade,
-                shadowColor: liveMessagebox.Font.ShadeColor,
-                border: +liveMessagebox.Font.Border,
-                borderColor: liveMessagebox.Font.BorderColor,
-                fontFamily: liveMessagebox.Font.Name,
-                fontChangeabled: Converter.booleanStringToBoolean(liveMessagebox.Font.FontChangeabled)
+                size: messagebox.Font.Size,
+                color: messagebox.Font.Color,
+                borderSize: messagebox.Font.Border,
+                borderColor: messagebox.Font.BorderColor,
+                fontFamily: messagebox.Font.Name
             },
-            backgroundColor: liveMessagebox.BGColor,
-            backgroundImage: liveMessagebox.BGFile,
-            centerX: +liveMessagebox.PosX,
-            centerY: +liveMessagebox.PosY,
-            width: +liveMessagebox.Width,
-            height: +liveMessagebox.Height,
-            marginTop: +liveMessagebox.BGMarginT,
-            marginBottom: +liveMessagebox.BGMarginB,
-            marginRight: +liveMessagebox.BGMarginR,
-            marginLeft: +liveMessagebox.BGMarginL,
-            alpha: +liveMessagebox.BGAlpha,
-            cursorImage: liveMessagebox.CsrClick,
-            cursorX: +liveMessagebox.CsrPosX,
-            cursorY: +liveMessagebox.CsrPosY,
-            nextPageImage: liveMessagebox.SEClick
-        };
-        messageboxResult.push(messagebox);
+            backgroundColor: messagebox.BGColor,
+            backgroundImage: messagebox.BGFile,
+            area: {
+                x: messagebox.PosX - (messagebox.Width / 2),
+                y: messagebox.PosY - (messagebox.Height / 2),
+                width: messagebox.Width,
+                height: messagebox.Height
+            },
+            margin: {
+                top: messagebox.BGMarginT,
+                bottom: messagebox.BGMarginB,
+                left: messagebox.BGMarginL,
+                right: messagebox.BGMarginR
+            },
+            cursor: {
+                image: messagebox.CsrClick,
+                position: { x: messagebox.CsrPosX, y: messagebox.CsrPosY },
+                clickToContinueImage: messagebox.SEClick
+            },
+            alpha: +messagebox.BGAlpha
+        });
     });
-    project.messagebox = messageboxResult;
-    source.Folder.Item.forEach(liveScene => {
-        totalSceneCount++;
-        let scene: Scene = {
-            id: +liveScene.ID,
-            name: liveScene.Caption,
-            variable: (typeof liveScene.Var == 'string') ? [] : _.flatten([liveScene.Var.Item]).map(v => Converter.lvarToVariable(v)),
-            bootstrap: null,
+
+    console.log('Loading scenes...');
+    // Scene
+    Utilities.arrayIfNeeded(source.Folder.Item).forEach(scene => {
+        Analysis.scene ++;
+        console.log(`Find scene ${Utilities.hexName(scene.ID)} with name "${scene.Caption}"`);
+        let result: GeneralScript.Scene = {
+            id: scene.ID,
+            name: scene.Caption,
+            variable: Utilities.findItemInChildren(scene.Var).map(v => Converter.sceneVariable(v)),
+            entrance: null,
             block: []
         };
-        console.log(`\n场景 ${toLiveMakerHexName(+liveScene.ID)}（${liveScene.Caption}）`);
-        liveScene.Node.Item.forEach(node => {
-            totalNodeCount++;
-            let block: Block<any> = {
-                id: +node.ID,
+        Utilities.findItemInChildren(scene.Node).forEach(node => {
+            Analysis.block ++;
+            console.log(`\t[Node] ${Utilities.hexName(node.ID)}（${node.Caption}）`);
+            let block: GeneralScript.Block = {
+                id: node.ID,
                 name: node.Caption,
-                type: Converter.nodetypeToBlocktype(node.Type),
                 next: [],
-                data: null
-            };
-            console.log(`\t[节点] ${toLiveMakerHexName(+node.ID)}（${node.Caption}）`);
-            if (block.type == BlockType.Calculator) {
-                let realNode: LiveMakerProjectNodeCalc = node as LiveMakerProjectNodeCalc;
-                block.data = {
-                    variable: typeof realNode.Var == 'string' ? [] : _.flatten([realNode.Var.Item]).map(v => Converter.lvarToVariable(v)),
-                    code: typeof realNode.Calc == 'string' ? [] : _.flatten([realNode.Calc.Item]).map(v => Converter.lcalcToCaltulatorCode(v))
-                } as BlockCalculator;
-            } else if (block.type == BlockType.Menu) {
-                let realNode: LiveMakerProjectNodeMenu = node as LiveMakerProjectNodeMenu;
-                block.data = {
-                    item: [],
-                    fadeIn: +realNode.FadeinTime,
-                    fadeOut: +realNode.FadeoutTime,
-                    canCancel: Converter.booleanStringToBoolean(realNode.CancelEnabled),
-                    hoverSound: realNode.SoundHover,
-                    clickSound: realNode.SoundSelect,
-                    timeLimitation: +realNode.TimeLimit,
-                    condition: [],
-                    visibleCondition: [],
-                    enableCondition: []
-                } as BlockMenu;
-                let condition: BlockMenuCondition[] = [];
-                (realNode.Cond.Item ? _.flatten([realNode.Cond.Item]) : []).forEach(cond => {
-                    condition.push({
-                        choice: cond.Name,
-                        condition: Converter.stringToConditionContent(cond.Cond)
-                    });
-                });
-                block.data.condition = condition;
-                condition = [];
-                (realNode.VisibleCond.Item ? _.flatten([realNode.VisibleCond.Item]) : []).forEach(cond => {
-                    condition.push({
-                        choice: cond.Name,
-                        condition: Converter.stringToConditionContent(cond.Cond)
-                    });
-                });
-                block.data.visibleCondition = condition;
-                condition = [];
-                (realNode.SelectedCond.Item ? _.flatten([realNode.SelectedCond.Item]) : []).forEach(cond => {
-                    condition.push({
-                        choice: cond.Name,
-                        condition: Converter.stringToConditionContent(cond.Cond)
-                    });
-                });
-                block.data.enableCondition = condition;
-                let path = `${PROJECT_RESOURCE_ROOT}\\${realNode.Source}`;
-                console.log(`\t\t -> 选单文件 ${realNode.Source}`);
-                let rawData: LiveMakerMenu = xml.parse(iconv.decode(fs.readFileSync(path), 'shift-jis'), { arrayMode: false }).PrevMenu;
-                block.data.item = parseMenu(_.flatten([rawData.Button.Item]), path);
-            } else if (block.type == BlockType.Choice) {
-                let realNode: LiveMakerProjectNodeChoice = node as LiveMakerProjectNodeChoice;
-                block.data = {
-                    choice: _.flatten([realNode.Menu.Item]).map(v => ({
-                        title: v.Caption,
-                        condition: v.Cond,
-                        executable: Converter.booleanStringToBoolean(v.IsCalc)
-                    }) as Choice),
-                    cancelable: Converter.booleanStringToBoolean(realNode.CancelEnabled),
-                    hoverSound: realNode.SoundHover,
-                    selectSound: realNode.SoundSelect,
-                    time: null,
-                    positionX: Converter.stringAlignToAlign(realNode.PosX),
-                    positionY: Converter.stringAlignToAlign(realNode.PosY),
-                    align: Converter.lalignToAlign(realNode.HAlign)
-                } as BlockChoice;
-                if (realNode.TimeLimit.endsWith('.lcm') || realNode.TimeLimit.endsWith('.lmt'))
-                    block.data.time = parseAnimation(fs_path.resolve(PROJECT_RESOURCE_ROOT, realNode.TimeLimit));
-                else 
-                    block.data.time = +realNode.TimeLimit;
-            } else if (block.type == BlockType.Input) {
-                let realNode: LiveMakerProjectNodeInput = node as LiveMakerProjectNodeInput;
-                block.data = {
-                    title: realNode.Prompt,
-                    positionX: Converter.stringAlignToAlign(realNode.PosX),
-                    positionY: Converter.stringAlignToAlign(realNode.PosY),
-                    enableCancel: Converter.booleanStringToBoolean(realNode.CancelEnabled),
-                    content: _.flatten([realNode.Text.Item]).map(v => ({
-                        maxLength: +v.MaxLen,
-                        minLength: +v.MinLen,
-                        targetVariable: v.Param,
-                        title: v.Caption
-                    }) as Input)
-                } as BlockInput;
-            } else if (block.type == BlockType.Jump) {
-                let realNode: LiveMakerProjectNodeJump = node as LiveMakerProjectNodeJump;
-                block.data = {
-                    target: +realNode.Target
-                } as BlockJump;
-            } else if (block.type == BlockType.Navigator) {
-                let realNode: LiveMakerProjectNodeNavigate = node as LiveMakerProjectNodeNavigate;
-                block.data = {
-                    target: +realNode.Target
-                } as BlockNavigator;
-                if (realNode.TargetPage && realNode.TargetPage != '') {
-                    if (realNode.TargetPage == 'ロード')
-                        block.data.targetPage = SystemPage.Load;
-                    else if (realNode.TargetPage == 'セーブ')
-                        block.data.targetPage = SystemPage.Save;
-                    else if (realNode.TargetPage == 'ＣＧモード')
-                        block.data.targetPage = SystemPage.Gallery;
-                }
-            } else if (block.type == BlockType.Normal) {
-                let realNode: LiveMakerProjectNodeScene = node as LiveMakerProjectNodeScene;
-                block.data = {
-                    trackHistory: !Converter.booleanStringToBoolean(realNode.NotStory),
-                    skipLastEmptyLine: Converter.booleanStringToBoolean(realNode.NotCaret),
-                    content: null
-                } as BlockNormal;
-                let path = `data/${toLiveMakerHexName(+realNode.ID)}.lns`;
-                console.log(`\t\t -> 内容文件 ${path}`);
-                let content: string = '';
-                if (fs.existsSync(path))
-                    content = iconv.decode(fs.readFileSync(path), 'shift-jis');
-                block.data.content = parseSceneCode(content);
-            } else if (block.type == BlockType.Exit || block.type == BlockType.SceneEnd || block.type == BlockType.SceneStart) {
-                block.data = null;
+                data: null,
+                type: Converter.blockType(node.Type)
             }
-            let jumpItem: Condition[] = [];
-            (node.Jump.Item ? _.flatten([node.Jump.Item]) : []).forEach(jump => {
-                totalJumpCount++;
-                jumpItem.push({
-                    targetId: +jump.ID,
-                    condition: Converter.stringToConditionContent(jump.Cond)
+            result.block.push(block);
+            if (block.type == GeneralScript.BlockType.Calculator) {
+                let nodeData = node as LiveProject.NodeCalc;
+                let targetData: GeneralScript.BlockDataCalculator = {
+                    variable: Utilities.findItemInChildren(nodeData.Var).map(v => Converter.sceneVariable(v)),
+                    code: Utilities.findItemInChildren(nodeData.Calc).map(v => parseCode(v))
+                };
+                block.data = targetData;
+            } else if (block.type == GeneralScript.BlockType.Menu) {
+                let nodeData = node as LiveProject.NodeMenu;
+                let targetData: GeneralScript.BlockDataMenu = {
+                    name: nodeData.Source,
+                    fadeIn: nodeData.FadeinTime,
+                    fadeOut: nodeData.FadeoutTime,
+                    canCancel: Converter.boolean(nodeData.CancelEnabled),
+                    hoverSound: nodeData.SoundHover,
+                    clickSound: nodeData.SoundSelect,
+                    timeLimitation: nodeData.TimeLimit,
+                    condition: []
+                };
+                targetData.condition = Utilities.findItemInChildren(nodeData.VisibleCond).map(condition => {
+                    let menuCondition: GeneralScript.MenuCondition = {
+                        choice: condition.Name,
+                        condition: Converter.condition(condition.Cond)
+                    };
+                    return menuCondition;
                 });
+                block.data = targetData;
+                if (!Utilities.isMenuSaved(generalProject, nodeData.Source)) {
+                    generalProject.extendedResource.menuFile[nodeData.Source] = parseMenu(nodeData);
+                }
+            } else if (block.type == GeneralScript.BlockType.Choice) {
+                let nodeData = node as LiveProject.NodeChoice;
+                let targetData: GeneralScript.BlockDataChoice = {
+                    choice: [],
+                    hoverSound: nodeData.SoundHover,
+                    selectSound: nodeData.SoundSelect,
+                    time: null,
+                    align: Converter.align(nodeData.HAlign)
+                }
+                block.data = targetData;
+                targetData.choice = Utilities.findItemInChildren(nodeData.Menu).map(v => ({
+                    title: v.Caption,
+                    condition: v.Cond
+                }));
+                if (typeof nodeData.TimeLimit == 'string') {
+                    if (!Utilities.isAnimationSaved(generalProject, nodeData.TimeLimit)) {
+                        let animation = parseAnimation(Path.resolve(PROJECT_RESOURCE_ROOT, nodeData.TimeLimit));
+                        generalProject.extendedResource.animationFile[nodeData.TimeLimit] = animation;
+                    }
+                }
+                targetData.time = nodeData.TimeLimit;
+            } else if (block.type == GeneralScript.BlockType.Input) {
+                let nodeData = node as LiveProject.NodeInput;
+                let targetData: GeneralScript.BlockDataInput = {
+                    title: nodeData.Prompt,
+                    content:[]
+                };
+                block.data = targetData;
+                targetData.content = Utilities.findItemInChildren(nodeData.Text).map(v =>({
+                    maxLength: v.MaxLen,
+                    minLength: v.MinLen,
+                    storedVariableName: v.Param,
+                    title: v.Caption
+                }));
+            } else if (block.type == GeneralScript.BlockType.Jump) {
+                let nodeData = node as LiveProject.NodeJump;
+                let targetData: GeneralScript.BlockDataJump = {
+                    target: nodeData.Target
+                };
+                block.data = targetData;
+            } else if (block.type == GeneralScript.BlockType.Call) {
+                let nodeData = node as LiveProject.NodeNavigate;
+                let targetData: GeneralScript.BlockDataNavigator = {
+                    target: nodeData.Target
+                };
+                block.data = targetData;
+                if (nodeData.TargetPage && nodeData.TargetPage != '') {
+                    targetData.target = -1;
+                    if (nodeData.TargetPage == 'ロード')
+                        targetData.page = GeneralScript.SystemPage.Load;
+                    else if (nodeData.TargetPage == 'セーブ')
+                        targetData.page = GeneralScript.SystemPage.Save;
+                    else if (nodeData.TargetPage == 'ＣＧモード')
+                        targetData.page = GeneralScript.SystemPage.Gallery;
+                }
+            } else if (block.type == GeneralScript.BlockType.Normal) {
+                let nodeData = node as LiveProject.NodeNormal;
+                let targetData: GeneralScript.BlockDataNormal = {
+                    content: []
+                };
+                block.data = targetData;
+                let path = `data/${Utilities.hexName(nodeData.ID)}.lns`
+                console.log(`\t\t -> SceneContent ${path}`);
+                let content: string = '';
+                if (File.existsSync(path)) {
+                    content = Iconv.decode(File.readFileSync(path), 'shift-jis');
+                    Analysis.file ++;
+                }
+                targetData.content = parseSceneCode(content, generalProject);
+            } else if (block.type == GeneralScript.BlockType.Exit || block.type == GeneralScript.BlockType.SceneEnd || block.type == GeneralScript.BlockType.SceneStart) {
+                block.data = {};
+            }
+            let jumpItem: GeneralScript.TargetWithCondition[] = Utilities.findItemInChildren(node.Jump).map(jump => {
+                Analysis.jump ++;
+                return {
+                    target: jump.ID,
+                    condition: Converter.condition(jump.Cond)
+                };
             });
             block.next = jumpItem;
-            scene.block.push(block);
-            if (block.type == BlockType.SceneStart)
-                scene.bootstrap = block.id;
+            if (block.type == GeneralScript.BlockType.SceneStart)
+                result.entrance = block.id;
         });
-        sceneResult.push(scene);
+        generalProject.scene.push(result);
     });
-    project.scene = sceneResult;
-    console.log(`\n工程统计：共${totalSceneCount}个场景，${totalNodeCount}个节点，${totalFileCount}个文件，${totalJumpCount}次节点跳转, ${totalCommandCount}个场景指令`)
-    return project;
+
+    // Analysis
+    console.log(`\nAnalysis: ${Analysis.scene} scenes, ${Analysis.block} blocks, ${Analysis.file} files, ${Analysis.jump} jumps, ${Analysis.menuOption} menu options, ${Analysis.command} commands`)
+    return generalProject;
 }
 
-export function parseSceneCode(content: string): Command[] {
-    totalFileCount++;
+function parseSceneCode(content: string, project: GeneralScript.Project): GeneralScript.Command[] {
     content = content.replace(/[\r\n]/g, '').replace(/<BR>/g, '\n');
-    let result: LiveMakerSceneCommand[] = new Array<LiveMakerSceneCommand>();
+    let result: LiveScene.Command[] = [];
     let i = 0;
-    let currentCommand: LiveMakerSceneCommand = null;
+    let currentCommand: LiveScene.Command = null;
     while (i < content.length) {
         let endIndex = content.indexOf('>', i + 1);
         let nextSpace = content.indexOf(' ', i + 1);
@@ -261,7 +248,7 @@ export function parseSceneCode(content: string): Command[] {
             }
             if (nextSpace == -1 || nextSpace > endIndex) { // 没有参数的命令
                 currentCommand = {
-                    type: <LiveMakerSceneCommandType> content.substring(i + 1, endIndex),
+                    type: content.substring(i + 1, endIndex) as LiveScene.CommandType,
                     param: {}
                 };
                 result.push(currentCommand);
@@ -271,7 +258,7 @@ export function parseSceneCode(content: string): Command[] {
             }
             // 一般命令
             currentCommand = {
-                type: <LiveMakerSceneCommandType> content.substring(i + 1, nextSpace),
+                type: content.substring(i + 1, nextSpace) as LiveScene.CommandType,
                 param: {}
             };
             i = nextSpace + 1;
@@ -307,305 +294,262 @@ export function parseSceneCode(content: string): Command[] {
         let nextStart = content.indexOf('<', i + 1);
         if (nextStart == -1) nextStart = content.length;
         currentCommand = {
-            type: <LiveMakerSceneCommandType> PLAIN_TEXT_CODE_TYPE,
+            type: LiveScene.CommandType.PLAINTEXT,
             param: { PLAINTEXT: content.substring(i, nextStart) }
         };
         result.push(currentCommand);
         currentCommand = null;
         i = nextStart;
     }
-    totalCommandCount += result.length;
-    return convertSceneCode(result);
+    Analysis.command += result.length;
+    return convertSceneCode(result, project);
 }
 
-export function convertSceneCode(source: LiveMakerSceneCommand[]): Command[] {
-    let result: Command[] = new Array<Command>();
+function convertSceneCode(source: LiveScene.Command[], project: GeneralScript.Project): GeneralScript.Command[] {
+    let result: GeneralScript.Command[] = [];
     let i = 0;
     while (i < source.length) {
         let original = source[i];
-        if (original.type == LiveMakerSceneCommandType.PLAINTEXT || original.type == LiveMakerSceneCommandType.B ||
-            original.type == LiveMakerSceneCommandType.I || original.type == LiveMakerSceneCommandType.U ||
-            original.type == LiveMakerSceneCommandType.FONT) {
-            let initialStyle: CommandContentText = {
-                text: null,
-                size: null,
-                bold: null,
-                italic: null,
-                underline: null,
-                color: null,
-                borderColor: null,
-                borderWidth: null,
-                shadowColor: null,
-                shadowOffset: null
+        if (original.type == LiveScene.CommandType.PLAINTEXT || original.type == LiveScene.CommandType.B ||
+            original.type == LiveScene.CommandType.I || original.type == LiveScene.CommandType.U ||
+            original.type == LiveScene.CommandType.FONT) {
+            let initialStyle: GeneralScript.CommandContentText = {
+                text: null, size: null, color: null,
+                bold: null, italic: null, underline: null,
+                borderColor: null, borderWidth: null
             };
-            let textParseResult = Converter.textSceneCommandToTextCommand(source, i, initialStyle);
-            result = result.concat(textParseResult.result.map<Command>(v => ({
-                type: CommandType.Text,
+            let textParseResult = groupCommand(source, i, initialStyle);
+            result = result.concat(textParseResult.result.map<GeneralScript.Command>(v => ({
+                type: GeneralScript.CommandType.Text,
                 content: v
             })));
             i = textParseResult.lastPointer;
-            if (source[i - 1].type == LiveMakerSceneCommandType.PLAINTEXT)
+            if (source[i - 1].type == LiveScene.CommandType.PLAINTEXT)
                 i--;
-        } else if (original.type == LiveMakerSceneCommandType.PS) {
+        } else if (original.type == LiveScene.CommandType.PS) {
             result.push({
-                type: CommandType.WaitForClick,
+                type: GeneralScript.CommandType.WaitForClick,
                 content: null
             });
-        } else if (original.type == LiveMakerSceneCommandType.PG) {
+        } else if (original.type == LiveScene.CommandType.PG) {
             result.push({
-                type: CommandType.WaitAndClear,
+                type: GeneralScript.CommandType.WaitAndClear,
                 content: null
             });
-        } else if (original.type == LiveMakerSceneCommandType.FLIP) {
-            let content: CommandContentEffect = {
+        } else if (original.type == LiveScene.CommandType.FLIP) {
+            let content: GeneralScript.CommandContentEffect = {
                 name: original.param['NAME'],
-                type: Converter.flipTypeToEffectType(<LiveMakerSceneEffectType> original.param['EFFECT']),
-                reverse: Converter.onOffToBoolean(original.param['REVERSE']),
-                default: Converter.onOffToBoolean(original.param['DEFAULT']),
-                source: original.param['SOURCE'],
+                time: +original.param['TIME'],
+                type: Converter.effectType(original.param['EFFECT'] as LiveScene.EffectType),
+                reverse: Converter.boolean(original.param['REVERSE']),
+                default: Converter.boolean(original.param['DEFAULT']),
                 parameter: [ original.param['PARAM1'], original.param['PARAM2'] ]
             }
             result.push({
-                type: CommandType.Effect,
+                type: GeneralScript.CommandType.Effect,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.SYSMENUON) {
-            let content: CommandContentToggle = {
+        } else if (original.type == LiveScene.CommandType.SYSMENUON) {
+            let content: GeneralScript.CommandContentToggle = {
                 value: true
             };
             result.push({
-                type: CommandType.MenuToggle,
+                type: GeneralScript.CommandType.MenuToggle,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.SYSMENUOFF) {
-            let content: CommandContentToggle = {
+        } else if (original.type == LiveScene.CommandType.SYSMENUOFF) {
+            let content: GeneralScript.CommandContentToggle = {
                 value: false
             };
             result.push({
-                type: CommandType.MenuToggle,
+                type: GeneralScript.CommandType.MenuToggle,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.SAVELOADON) {
-            let content: CommandContentToggle = {
+        } else if (original.type == LiveScene.CommandType.SAVELOADON) {
+            let content: GeneralScript.CommandContentToggle = {
                 value: true
             };
             result.push({
-                type: CommandType.SaveLoadToggle,
+                type: GeneralScript.CommandType.SaveLoadToggle,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.SAVELOADOFF) {
-            let content: CommandContentToggle = {
+        } else if (original.type == LiveScene.CommandType.SAVELOADOFF) {
+            let content: GeneralScript.CommandContentToggle = {
                 value: false
             };
             result.push({
-                type: CommandType.SaveLoadToggle,
+                type: GeneralScript.CommandType.SaveLoadToggle,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.WAIT) {
-            let content: CommandContentWait = {
-                time: +original.param['TIME'],
-                clickSkip: Converter.onOffToBoolean(original.param['CLICKABORT']),
-                allowQuickSkip: Converter.onOffToBoolean(original.param['SKIPENABLED'])
+        } else if (original.type == LiveScene.CommandType.WAIT) {
+            let content: GeneralScript.CommandContentTimeTarget = {
+                time: +original.param['TIME']
             };
             result.push({
-                type: CommandType.Wait,
+                type: GeneralScript.CommandType.Wait,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.WAITFOR) {
-            let content: CommandContentWait = {
-                time: +original.param['TIME'],
-                targetName: original.param['NAME'],
-                clickSkip: Converter.onOffToBoolean(original.param['CLICKABORT']),
-                allowQuickSkip: false
+        } else if (original.type == LiveScene.CommandType.WAITFOR) {
+            let content: GeneralScript.CommandContentNameTarget = {
+                name: original.param['NAME']
             };
             result.push({
-                type: CommandType.WaitUntilFinish,
+                type: GeneralScript.CommandType.WaitUntilFinish,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.TXSPF || original.type == LiveMakerSceneCommandType.TXSPN ||
-                   original.type == LiveMakerSceneCommandType.TXSPS) {
-            let speed = TextSpeed.Normal;
-            if (original.type == LiveMakerSceneCommandType.TXSPF)
-                speed = TextSpeed.Fatest;
-            if (original.type == LiveMakerSceneCommandType.TXSPS)
-                speed = TextSpeed.Slow;
-            let content: CommandContentTextSpeed = {
+        } else if (original.type == LiveScene.CommandType.TXSPF || original.type == LiveScene.CommandType.TXSPN ||
+                   original.type == LiveScene.CommandType.TXSPS) {
+            let speed = GeneralScript.TextSpeed.Normal;
+            if (original.type == LiveScene.CommandType.TXSPF)
+                speed = GeneralScript.TextSpeed.Fatest;
+            if (original.type == LiveScene.CommandType.TXSPS)
+                speed = GeneralScript.TextSpeed.Slow;
+            let content: GeneralScript.CommandContentTextSpeed = {
                 speed: speed
             };
             result.push({
-                type: CommandType.ChangeTextSpeed,
+                type: GeneralScript.CommandType.ChangeTextSpeed,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.VAR) {
-            let content: CommandContentNameTarget = {
+        } else if (original.type == LiveScene.CommandType.VAR) {
+            let content: GeneralScript.CommandContentNameTarget = {
                 name: original.param['NAME']
             };
             result.push({
-                type: CommandType.ShowVariableContent,
+                type: GeneralScript.CommandType.ShowVariableContent,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.MESBOX) {
-            let content: CommandContentTimeTarget = {
+        } else if (original.type == LiveScene.CommandType.MESBOX) {
+            let content: GeneralScript.CommandContentTimeTarget = {
                 time: +original.param['TIME']
             };
             result.push({
-                type: CommandType.MessageBox,
+                type: GeneralScript.CommandType.MessageBox,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.CHGMESBOX) {
-            let content: CommandContentNameTarget = {
+        } else if (original.type == LiveScene.CommandType.CHGMESBOX) {
+            let content: GeneralScript.CommandContentNameTarget = {
                 name: original.param['NAME']
             };
             result.push({
-                type: CommandType.ChangeMessageBox,
+                type: GeneralScript.CommandType.ChangeMessageBox,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.DELMESBOX) {
-            let content: CommandContentTimeTarget = {
+        } else if (original.type == LiveScene.CommandType.DELMESBOX) {
+            let content: GeneralScript.CommandContentTimeTarget = {
                 time: +original.param['TIME']
             };
             result.push({
-                type: CommandType.DestroyMessageBox,
+                type: GeneralScript.CommandType.DestroyMessageBox,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.MOVIE) {
-            let content: CommandContentMovie = {
-                source: 'MOVIE\\' + original.param['SOURCE'],
-                zoomPencentage: +original.param['ZOOM'],
-                x: Converter.stringAlignToAlign(original.param['X']),
-                y: Converter.stringAlignToAlign(original.param['Y']),
-                mode: Converter.stringModeToRepeatMode(original.param['MODE'])
+        } else if (original.type == LiveScene.CommandType.MOVIE) {
+            let content: GeneralScript.CommandContentMovie = {
+                source: 'MOVIE\\' + original.param['SOURCE']
             };
             result.push({
-                type: CommandType.Movie,
+                type: GeneralScript.CommandType.Movie,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.QUAKE) {
-            let content: CommandContentQuake = {
+        } else if (original.type == LiveScene.CommandType.QUAKE) {
+            let content: GeneralScript.CommandContentQuake = {
                 target: original.param['NAME'].split(','),
                 time: +original.param['TIME'],
-                random: Converter.onOffToBoolean(original.param['RANDOM']),
+                random: Converter.boolean(original.param['RANDOM']),
                 x: +original.param['X'],
                 y: +original.param['Y'],
                 repeatCount: +original.param['CYCLE'],
-                type: Converter.typeToQuakeType(original.param['TYPE'])
+                type: Converter.quakeType(original.param['TYPE'])
             };
             result.push({
-                type: CommandType.Quake,
+                type: GeneralScript.CommandType.Quake,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.STOPQUAKE) {
-            let content: CommandContentTimeTarget = {
+        } else if (original.type == LiveScene.CommandType.STOPQUAKE) {
+            let content: GeneralScript.CommandContentTimeTarget = {
                 time: +original.param['TIME']
             };
             result.push({
-                type: CommandType.StopQuake,
+                type: GeneralScript.CommandType.StopQuake,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.SOUND) {
-            let content: CommandContentSound = {
+        } else if (original.type == LiveScene.CommandType.SOUND) {
+            let content: GeneralScript.CommandContentSound = {
                 source: 'サウンド\\' + original.param['SOURCE'],
-                track: Converter.stringToTrack(original.param['TRACK']),
-                mode: Converter.stringModeToRepeatMode(original.param['MODE']),
+                track: Converter.soundtrack(original.param['TRACK']),
+                mode: Converter.repeatMode(original.param['MODE']),
                 volume: +original.param['VOLUME']
             };
             result.push({
-                type: CommandType.Sound,
+                type: GeneralScript.CommandType.Sound,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.STOPSND) {
-            let content: CommandContentStopSound = {
+        } else if (original.type == LiveScene.CommandType.STOPSND) {
+            let content: GeneralScript.CommandContentStopSound = {
                 time: +original.param['TIME'],
-                track: Converter.stringToTrack(original.param['TRACK'])
+                track: Converter.soundtrack(original.param['TRACK'])
             };
             result.push({
-                type: CommandType.StopSound,
+                type: GeneralScript.CommandType.StopSound,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.CHGVOL) {
-            let content: CommandContentChangeVolume = {
+        } else if (original.type == LiveScene.CommandType.CHGVOL) {
+            let content: GeneralScript.CommandContentChangeVolume = {
                 time: +original.param['TIME'],
-                track: Converter.stringToTrack(original.param['TRACK']),
+                track: Converter.soundtrack(original.param['TRACK']),
                 volume: +original.param['VOLUME'],
-                waitUntilFinish: Converter.onOffToBoolean(original.param['WAIT'])
+                waitUntilFinish: Converter.boolean(original.param['WAIT'])
             };
             result.push({
-                type: CommandType.ChangeVolume,
+                type: GeneralScript.CommandType.ChangeVolume,
                 content: content
             });
-        } else if (original.type == LiveMakerSceneCommandType.IMAGE) {
-            if (original.param['SOURCE'].endsWith('.gal')) {
-                let content: CommandContentImage = {
-                    name: original.param['NAME'],
-                    source: 'グラフィック\\' + original.param['SOURCE'],
-                    x: Converter.stringAlignToAlign(original.param['X']),
-                    y: Converter.stringAlignToAlign(original.param['Y']),
-                    priority: LiveMakerPriority[original.param['PRIORITY']],
-                    useFlip: original.param['FLIP'],
-                    mode: Converter.stringModeToRepeatMode(original.param['MODE'])
-                };
-                result.push({
-                    type: CommandType.Image,
-                    content: content
-                });
-            } else if (original.param['SOURCE'].endsWith('.lcm') || original.param['SOURCE'].endsWith('.lmt')) {
-                let path = fs_path.resolve(PROJECT_RESOURCE_ROOT, 'グラフィック', original.param['SOURCE']);
-                console.log(`\t\t -> 动画文件 ${path}`);
-                let animation = parseAnimation(path);
-                let content: CommandContentImageAnimation = {
-                    name: original.param['NAME'],
-                    source: 'グラフィック\\' + original.param['SOURCE'],
-                    x: Converter.stringAlignToAlign(original.param['X']),
-                    y: Converter.stringAlignToAlign(original.param['Y']),
-                    priority: LiveMakerPriority[original.param['PRIORITY']],
-                    useFlip: original.param['FLIP'],
-                    mode: Converter.stringModeToRepeatMode(original.param['MODE']),
-                    animation: animation
-                };
-                result.push({
-                    type: CommandType.Image,
-                    content: content
-                });
-            } else {
-                throw '找不到文件格式处理器：' + original.param['SOURCE']
-            }
-        } else if (original.type == LiveMakerSceneCommandType.CHGIMG) {
-            if (original.param['SOURCE'].endsWith('.gal')) {
-                let content: CommandContentChangeImage = {
-                    name: original.param['NAME'],
-                    source: 'グラフィック\\' + original.param['SOURCE'],
-                    useFlip: original.param['FLIP'],
-                    mode: Converter.stringModeToRepeatMode(original.param['MODE'])
-                };
-                result.push({
-                    type: CommandType.ChangeImage,
-                    content: content
-                });
-            } else if (original.param['SOURCE'].endsWith('.lcm') || original.param['SOURCE'].endsWith('.lmt')) {
-                let path = fs_path.resolve(PROJECT_RESOURCE_ROOT, 'グラフィック', original.param['SOURCE']);
-                console.log(`\t\t -> 动画文件 ${path}`);
-                let animation = parseAnimation(path);
-                let content: CommandContentChangeImageAnimation = {
-                    name: original.param['NAME'],
-                    source: 'グラフィック\\' + original.param['SOURCE'],
-                    useFlip: original.param['FLIP'],
-                    mode: Converter.stringModeToRepeatMode(original.param['MODE']),
-                    animation: animation
-                };
-                result.push({
-                    type: CommandType.ChangeImage,
-                    content: content
-                });
-            } else {
-                throw '找不到文件格式处理器：' + original.param['SOURCE']
-            }
-        } else if (original.type == LiveMakerSceneCommandType.DELIMG) {
-            let content: CommandContentDestroyImage = {
-                target: original.param['NAME'].split(','),
-                useFlip: original.param['FLIP']
+        } else if (original.type == LiveScene.CommandType.IMAGE) {
+            let path = 'グラフィック\\' + original.param['SOURCE'];
+            let content: GeneralScript.CommandContentImage = {
+                name: original.param['NAME'],
+                source: path,
+                x: Converter.align(original.param['X']),
+                y: Converter.align(original.param['Y']),
+                priority: LiveScene.Priority[original.param['PRIORITY']],
+                effect: original.param['FLIP'],
+                mode: Converter.repeatMode(original.param['MODE'])
             };
             result.push({
-                type: CommandType.DestroyImage,
+                type: GeneralScript.CommandType.Image,
+                content: content
+            });
+            if (original.param['SOURCE'].endsWith('.lcm') || original.param['SOURCE'].endsWith('.lmt')) {
+                if (!Utilities.isAnimationSaved(project, path)) {
+                    let animation = parseAnimation(Path.resolve(PROJECT_RESOURCE_ROOT, path));
+                    project.extendedResource.animationFile[path] = animation;
+                }
+            }
+        } else if (original.type == LiveScene.CommandType.CHGIMG) {
+            let path = 'グラフィック\\' + original.param['SOURCE'];
+            let content: GeneralScript.CommandContentChangeImage = {
+                name: original.param['NAME'],
+                source: path,
+                effect: original.param['FLIP'],
+                mode: Converter.repeatMode(original.param['MODE'])
+            };
+            result.push({
+                type: GeneralScript.CommandType.ChangeImage,
+                content: content
+            });
+            if (original.param['SOURCE'].endsWith('.lcm') || original.param['SOURCE'].endsWith('.lmt')) {
+                if (!Utilities.isAnimationSaved(project, path)) {
+                    let animation = parseAnimation(Path.resolve(PROJECT_RESOURCE_ROOT, path));
+                    project.extendedResource.animationFile[path] = animation;
+                }
+            }
+        } else if (original.type == LiveScene.CommandType.DELIMG) {
+            let content: GeneralScript.CommandContentDestroyImage = {
+                target: original.param['NAME'].split(','),
+                effect: original.param['FLIP']
+            };
+            result.push({
+                type: GeneralScript.CommandType.DestroyImage,
                 content: content
             });
         }
@@ -614,14 +558,14 @@ export function convertSceneCode(source: LiveMakerSceneCommand[]): Command[] {
     return result;
 }
 
-export function parseAnimation(source: string): Animation[] {
+function parseAnimation(source: string): GeneralScript.Animation[] {
     let pathPrefix = source.substring(0, source.lastIndexOf('\\'));
-    let origin = fs.readFileSync(source);
+    let origin = File.readFileSync(source);
     let fileCount = origin.readInt32LE(0x26);
     let offset = 0x2f;
-    let result: Animation[] = new Array<Animation>();
+    let result: GeneralScript.Animation[] = [];
     for (let i = 0; i < fileCount; i++) {
-        let animation: Animation = {} as Animation;
+        let animation: GeneralScript.Animation = {} as GeneralScript.Animation;
         animation.period = origin.readInt32LE(offset) / 60;
         offset += 8;
         animation.startTime = origin.readInt32LE(offset) / 60;
@@ -637,7 +581,7 @@ export function parseAnimation(source: string): Animation[] {
         let nameBuffer = new Buffer(nameLength);
         for (let j = 0; j < nameLength; j++)
             nameBuffer[j] = origin[offset + j]
-        animation.name = iconv.decode(nameBuffer, 'shift-jis');
+        animation.name = Iconv.decode(nameBuffer, 'shift-jis');
         offset += nameLength;
         animation.center = {
             x: origin.readInt32LE(offset),
@@ -660,7 +604,7 @@ export function parseAnimation(source: string): Animation[] {
         animation.rotate = {
             start: origin.readDoubleLE(offset),
             end: origin.readDoubleLE(offset + 8),
-            ease: Ease.None
+            ease: GeneralScript.Ease.None
         };
         offset += 16;
         animation.zoom = {
@@ -669,13 +613,13 @@ export function parseAnimation(source: string): Animation[] {
             xEase: origin.readInt8(offset + 16),
             yStart: 0,
             yEnd: 0,
-            yEase: Ease.None
+            yEase: GeneralScript.Ease.None
         };
         offset += 17;
         animation.alpha = {
             start: origin.readInt32LE(offset),
             end: origin.readInt32LE(offset + 4),
-            ease: Ease.None
+            ease: GeneralScript.Ease.None
         };
         offset += 8;
         animation.rotate.ease = origin.readInt8(offset);
@@ -708,7 +652,7 @@ export function parseAnimation(source: string): Animation[] {
         let urlBuffer = new Buffer(urlLength);
         for (let j = 0; j < urlLength; j++)
             urlBuffer[j] = origin[offset + j]
-        animation.source = fs_path.resolve(pathPrefix, iconv.decode(urlBuffer, 'shift-jis'));
+        animation.source = Path.resolve(pathPrefix, Iconv.decode(urlBuffer, 'shift-jis'));
         offset += urlLength;
         offset += 5;
         result.push(animation);
@@ -716,476 +660,204 @@ export function parseAnimation(source: string): Animation[] {
     return result;
 }
 
-export function parseMenu(source: LiveMakerMenuItem[], path: string): BlockMenuItem[] {
-    totalMenuCount++;
+function parseMenu(source: LiveProject.NodeMenu): GeneralScript.Menu {
+    Analysis.file ++;
+    console.log(`\t\t -> Menu ${source.Source}`);
+    let path = `${PROJECT_RESOURCE_ROOT}\\${source.Source}`;
+    let rawData: LiveMenu.Menu = Xml.parse(Iconv.decode(File.readFileSync(path), 'shift-jis'), Utilities.xmlParseOptions).PrevMenu;
     let pathPrefix = path.substring(0, path.lastIndexOf('\\'));
-    return source.map(item => ({
-        left: item.Left,
-        top: item.Top,
-        previewLeft: item.PrevLeft,
-        previewTop: item.PrevTop,
-        imagePath: item.Path ? fs_path.resolve(pathPrefix, item.Path): '',
-        hoverPath: item.InImagePath ? fs_path.resolve(pathPrefix, item.InImagePath): '',
-        previewPath: item.InPrevPath ? fs_path.resolve(pathPrefix, item.InPrevPath) : null,
-        name: item.Name
-    }));
+    let result: GeneralScript.Menu = {
+        item: []
+    };
+    result.item = Utilities.arrayIfNeeded(rawData.Button.Item).map(item => {
+        Analysis.menuOption ++;
+        let result: GeneralScript.MenuItem = {
+            position: { x: item.Left, y: item.Top },
+            preview: {
+                position: { x: item.PrevLeft, y: item.PrevTop },
+                image: item.InPrevPath ? Path.resolve(pathPrefix, item.InPrevPath) : null
+            },
+            idleImage: item.Path ? Path.resolve(pathPrefix, item.Path): '',
+            hoverImage: item.InImagePath ? Path.resolve(pathPrefix, item.InImagePath): '',
+            name: item.Name
+        };
+        return result;
+    });
+    return result;
 }
 
-const Converter = {
-    booleanStringToBoolean: function (source: BooleanInString): boolean {
-        return source == BooleanInString.True;
-    },
-    onOffToBoolean: function (source: string): boolean {
-        return source == 'ON';
-    },
-    lvarToVariable: function (source: LiveMakerProjectSceneVar): Variable<any> {
-        let result: Variable<any> = {
-            name: source.Name,
-            value: null,
-            scope: null,
-            type: null
+function parseCode(source: LiveProject.CalcItem): GeneralScript.Code {
+    let result: GeneralScript.Code = {
+        type: null,
+        data: null,
+        scopeIndent: source.$Indent
+    };
+    if (source.$Command == LiveProject.CommandType.Calc) {
+        result.type = GeneralScript.CalculatorType.RawCode;
+        let data: GeneralScript.CalculatorDataRawCode = {
+            content: source['Calc']
         };
-        switch (source.VarScope) {
-            case LiveMakerProjectVarItemScope.Normal:
-                result.scope = VariableScope.Normal
-                break;
-            case LiveMakerProjectVarItemScope.Static:
-                result.scope = VariableScope.Static
-                break;
-            default:
-                result.scope = VariableScope.Normal
-                break;
-        }
-        switch (source.VarType) {
-            case LiveMakerProjectVarItemType.Boolean:
-                result.type = VariableType.Boolean
-                result.value = Converter.booleanStringToBoolean(source.InitValue as BooleanInString);
-                break;
-            case LiveMakerProjectVarItemType.Float:
-                result.type = VariableType.Float
-                result.value = +source.InitValue;
-                break;
-            case LiveMakerProjectVarItemType.Number:
-                result.type = VariableType.Integer
-                result.value = +source.InitValue;
-                break;
-            case LiveMakerProjectVarItemType.String:
-                result.type = VariableType.String
-                result.value = source.InitValue;
-                break;
-            default:
-                result.type = VariableType.Integer
-                result.value = source.InitValue;
-                break;
-        }
-        return result;
-    },
-    sceneVarToVariable: function (source: LiveMakerProjectCalcItem): Variable<any> {
-        let result: Variable<any> = {
-            name: source.Name,
-            value: null,
-            scope: null,
-            type: null
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.Break) {
+        result.type = GeneralScript.CalculatorType.Break;
+        let data: GeneralScript.CalcualtorDataConditionBase = {
+            condition: source['Calc']
         };
-        switch (source.Scope) {
-            case LiveMakerProjectCalcVarItemScope.Normal:
-                result.scope = VariableScope.Normal
-                break;
-            case LiveMakerProjectCalcVarItemScope.Static:
-                result.scope = VariableScope.Static
-                break;
-            case LiveMakerProjectCalcVarItemScope.AutoRemove:
-                result.scope = VariableScope.AutoRemove
-                break;
-            case LiveMakerProjectCalcVarItemScope.Local:
-                result.scope = VariableScope.Local
-                break;
-            default:
-                result.scope = VariableScope.Normal
-                break;
-        }
-        switch (source.Type) {
-            case LiveMakerProjectVarItemType.Boolean:
-                result.type = VariableType.Boolean
-                result.value = Converter.booleanStringToBoolean(source.InitVal as BooleanInString);
-                break;
-            case LiveMakerProjectVarItemType.Float:
-                result.type = VariableType.Float
-                result.value = +source.InitVal;
-                break;
-            case LiveMakerProjectVarItemType.Number:
-                result.type = VariableType.Integer
-                result.value = +source.InitVal;
-                break;
-            case LiveMakerProjectVarItemType.String:
-                result.type = VariableType.String
-                result.value = source.InitVal;
-                break;
-            default:
-                result.type = VariableType.Integer
-                result.value = source.InitVal;
-                break;
-        }
-        return result;
-    },
-    nodetypeToBlocktype: function (source: LiveMakerProjectNodeType): BlockType {
-        switch (source) {
-            case LiveMakerProjectNodeType.Calc:
-                return BlockType.Calculator;
-            case LiveMakerProjectNodeType.Choice:
-                return BlockType.Choice;
-            case LiveMakerProjectNodeType.Exit:
-                return BlockType.Exit;
-            case LiveMakerProjectNodeType.Input:
-                return BlockType.Input;
-            case LiveMakerProjectNodeType.Jump:
-                return BlockType.Jump;
-            case LiveMakerProjectNodeType.Menu:
-                return BlockType.Menu;
-            case LiveMakerProjectNodeType.Navigate:
-                return BlockType.Navigator;
-            case LiveMakerProjectNodeType.Scene:
-                return BlockType.Normal;
-            case LiveMakerProjectNodeType.SceneEnd:
-                return BlockType.SceneEnd;
-            case LiveMakerProjectNodeType.SceneStart:
-                return BlockType.SceneStart;
-        }
-    },
-    lcalcToCaltulatorCode: function (source: LiveMakerProjectCalcItem): Code {
-        let result: Code = {
-            type: null,
-            data: null,
-            scopeIndent: +source.$.Indent
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.Call) {
+        result.type = GeneralScript.CalculatorType.Call;
+        let data: GeneralScript.CalculatorDataCall = {
+            target: source['Page'],
+            param: (source['Params'] as string).split('&#2;'),
+            resultStoredVariable: source['Result'],
+            condition: source['Calc']
         };
-        if (source.$.Command == LiveMakerProjectVarCommandType.Calc) {
-            result.type = CalculatorType.Calc;
-            result.data = {
-                line: source['Calc']
-            } as CalculatorCalcData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.Break) {
-            result.type = CalculatorType.Break;
-            result.data = {
-                condition: source['Calc']
-            } as CalculatorBreakData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.Call) {
-            result.type = CalculatorType.Call;
-            result.data = {
-                page: source['Page'],
-                result: source['Result'],
-                condition: source['Calc'],
-                param: (source['Params'] as string).split('\u0002')
-            } as CalculatorCallData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.Continue) {
-            result.type = CalculatorType.Continue;
-            result.data = {
-                condition: source['Calc']
-            } as CalculatorContinueData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.Else) {
-            result.type = CalculatorType.Else;
-            result.data = { } as CalculatorElseData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.Elseif) {
-            result.type = CalculatorType.Elseif;
-            result.data = {
-                condition: source['Calc']
-            } as CalculatorElseifData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.If) {
-            result.type = CalculatorType.If;
-            result.data = {
-                condition: source['Calc']
-            } as CalculatorIfData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.ImgNew) {
-            result.type = CalculatorType.ImageNew;
-            result.data = {
-                name: source['Name'],
-                source: source['PR_SOURCE'],
-                left: source['PR_LEFT'],
-                top: source['PR_TOP'],
-                priority: +source['PR_PRIORITY']
-            } as CalculatorImageNewData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.ObjDel) {
-            result.type = CalculatorType.ObjDel;
-            result.data = {
-                name: source['Name']
-            } as CalculatorObjDelData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.Sound) {
-            result.type = CalculatorType.Sound;
-            result.data = {
-                name: source['Name'],
-                source: source['Source'],
-                repeat: Converter.booleanStringToBoolean(source['AutoRepeat'])
-            } as CalculatorSoundData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.TextIns) {
-            result.type = CalculatorType.TextIns;
-            result.data = {
-                target: source['Target'],
-                content: source['Text'],
-                record: Converter.booleanStringToBoolean(source['Memory']),
-                wait: Converter.booleanStringToBoolean(source['Wait']),
-                stopEvent: Converter.booleanStringToBoolean(source['StopEvent'])
-            } as CalculatorTextInsData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.VarDel) {
-            result.type = CalculatorType.VarDel;
-            result.data = {
-                name: source['Name']
-            } as CalculatorVarDelData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.VarNew) {
-            result.type = CalculatorType.VarNew;
-            result.data = Converter.sceneVarToVariable(source) as CalculatorVarNewData
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.Wait) {
-            result.type = CalculatorType.VarNew;
-            result.data = {
-                condition: source['Calc'],
-                time: +source['Time'],
-                stopEvent: Converter.booleanStringToBoolean(source['StopEvent'])
-            } as CalculatorWaitData;
-        }
-        if (source.$.Command == LiveMakerProjectVarCommandType.While) {
-            result.type = CalculatorType.VarNew;
-            result.data = {
-                init: source['Init'],
-                condition: source['Calc'],
-                loop: console['Loop']
-            } as CalculatorWhileData;
-        }
-        return result;
-    },
-    lalignToAlign: function (source: '0' | '1' | '2'): Align {
-        if (source == '0') return Align.Left;
-        if (source == '1') return Align.Center;
-        return Align.Right;
-    },
-    trimQuotes: function (source: string): string {
-        if (source.length > 0 && source[0] == '"' && source[source.length - 1] == '"')
-            return source.substring(1, source.length - 1);
-        else
-            return source;
-    },
-    textSceneCommandToTextCommand: function (source: LiveMakerSceneCommand[], pointer: number, initialStyle: CommandContentText): { lastPointer: number, result: CommandContentText[] } {
-        let endPosition = pointer;
-        let result: CommandContentText[] = new Array<CommandContentText>();
-        let i = pointer;
-        if (source[i].type == LiveMakerSceneCommandType.FONT) {
-            endPosition = _.findIndex(source, e => e.type == LiveMakerSceneCommandType.FONT_END, pointer);
-            initialStyle.size = +source[i].param['SIZE'];
-            initialStyle.color = source[i].param['COLOR'];
-            initialStyle.borderWidth = +source[i].param['BORDER'];
-            initialStyle.borderColor = source[i].param['BCOLOR'];
-            initialStyle.shadowOffset = +source[i].param['SHADOW'];
-            initialStyle.shadowColor = source[i].param['SCOLOR'];
-        }
-        if (source[i].type == LiveMakerSceneCommandType.B) {
-            endPosition = _.findIndex(source, e => e.type == LiveMakerSceneCommandType.B_END, pointer);
-            initialStyle.bold = true;
-        }
-        if (source[i].type == LiveMakerSceneCommandType.I) {
-            endPosition = _.findIndex(source, e => e.type == LiveMakerSceneCommandType.I_END, pointer);
-            initialStyle.italic = true;
-        }
-        if (source[i].type == LiveMakerSceneCommandType.U) {
-            endPosition = _.findIndex(source, e => e.type == LiveMakerSceneCommandType.U_END, pointer);
-            initialStyle.underline = true;
-        }
-        if (source[i].type == LiveMakerSceneCommandType.PLAINTEXT) {
-            endPosition = i + 1;
-            i--;
-        }
-        i++;
-        while (i < endPosition) {
-            if (source[i].type != LiveMakerSceneCommandType.PLAINTEXT) {
-                let parseResult = Converter.textSceneCommandToTextCommand(source, i, initialStyle);
-                result = result.concat(parseResult.result);
-                i = parseResult.lastPointer + 1;
-                continue;
-            }
-            let text = _.cloneDeep(initialStyle);
-            text.text = source[i].param[LiveMakerSceneCommandType.PLAINTEXT]
-            result.push(text);
-            i++;
-        }
-        if (!source[i]) {
-            // 不需要处理
-        } else if (source[i].type == LiveMakerSceneCommandType.FONT_END) {
-            initialStyle.size = null;
-            initialStyle.color = null;
-            initialStyle.borderWidth = null;
-            initialStyle.borderColor = null;
-            initialStyle.shadowOffset = null;
-            initialStyle.shadowColor = null;
-        } else if (source[i].type == LiveMakerSceneCommandType.B_END) {
-            initialStyle.bold = null;
-        } else if (source[i].type == LiveMakerSceneCommandType.I_END) {
-            initialStyle.italic = null;
-        } else if (source[i].type == LiveMakerSceneCommandType.U_END) {
-            initialStyle.underline = null;
-        }
-        return {
-            lastPointer: i,
-            result: result
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.Continue) {
+        result.type = GeneralScript.CalculatorType.Continue;
+        let data: GeneralScript.CalcualtorDataConditionBase = {
+            condition: source['Calc']
         };
-    },
-    flipTypeToEffectType: function (source: LiveMakerSceneEffectType): EffectType {
-        switch (source) {
-            case LiveMakerSceneEffectType.BIG:
-                return EffectType.ZoomBig;
-            case LiveMakerSceneEffectType.BLACK:
-                return EffectType.Black;
-            case LiveMakerSceneEffectType.BLINDH:
-                return EffectType.BlindHorizontal;
-            case LiveMakerSceneEffectType.BLINDV:
-                return EffectType.BlindVertical;
-            case LiveMakerSceneEffectType.BLOCKCOIL:
-                return EffectType.BlockCoil;
-            case LiveMakerSceneEffectType.BLOCKRANDOM:
-                return EffectType.BlockRandom;
-            case LiveMakerSceneEffectType.BLURB:
-                return EffectType.BlurBlack;
-            case LiveMakerSceneEffectType.BLURW:
-                return EffectType.BlurWhite;
-            case LiveMakerSceneEffectType.CIRCLE:
-                return EffectType.Circle;
-            case LiveMakerSceneEffectType.CLOCKHAND:
-                return EffectType.Clockhand;
-            case LiveMakerSceneEffectType.CRACK:
-                return EffectType.Crack;
-            case LiveMakerSceneEffectType.CURTAINH:
-                return EffectType.CurtainHorizontal;
-            case LiveMakerSceneEffectType.CURTAINV:
-                return EffectType.CurtainVertical;
-            case LiveMakerSceneEffectType.DITHER:
-                return EffectType.Dither;
-            case LiveMakerSceneEffectType.FADE:
-                return EffectType.Fade;
-            case LiveMakerSceneEffectType.FAN:
-                return EffectType.FanCenter;
-            case LiveMakerSceneEffectType.FLASH:
-                return EffectType.Flash;
-            case LiveMakerSceneEffectType.GRID:
-                return EffectType.Grid;
-            case LiveMakerSceneEffectType.GRIDH:
-                return EffectType.GridHorizontal;
-            case LiveMakerSceneEffectType.GRIDV:
-                return EffectType.GridVertical;
-            case LiveMakerSceneEffectType.MASK:
-                return EffectType.Mask;
-            case LiveMakerSceneEffectType.MASKB:
-                return EffectType.MaskBlack;
-            case LiveMakerSceneEffectType.MASKW:
-                return EffectType.MaskWhite;
-            case LiveMakerSceneEffectType.MOSAIC:
-                return EffectType.Mosaic;
-            case LiveMakerSceneEffectType.NONE:
-                return EffectType.None;
-            case LiveMakerSceneEffectType.RIPPLE:
-                return EffectType.Ripple;
-            case LiveMakerSceneEffectType.RUBBERH:
-                return EffectType.RubberHorizontal;
-            case LiveMakerSceneEffectType.RUBBERV:
-                return EffectType.RubberVertical;
-            case LiveMakerSceneEffectType.SCRATCHH:
-                return EffectType.ScratchHorizontal;
-            case LiveMakerSceneEffectType.SCRATCHV:
-                return EffectType.ScratchVertical;
-            case LiveMakerSceneEffectType.SCROLLH:
-                return EffectType.ScrollHorizontal;
-            case LiveMakerSceneEffectType.SCROLLV:
-                return EffectType.ScrollVertical;
-            case LiveMakerSceneEffectType.SMALL:
-                return EffectType.ZoomSmall;
-            case LiveMakerSceneEffectType.SPOT:
-                return EffectType.Spot;
-            case LiveMakerSceneEffectType.TWISTH:
-                return EffectType.TwistHorizontal;
-            case LiveMakerSceneEffectType.TWISTV:
-                return EffectType.TwistVertical;
-            case LiveMakerSceneEffectType.WFAN:
-                return EffectType.FanBorder;
-            case LiveMakerSceneEffectType.WHITE:
-                return EffectType.White;
-            case LiveMakerSceneEffectType.ZOOMIN:
-                return EffectType.ZoomIn;
-            default:
-                throw '找不到任何匹配的效果类型：' + source;
-        }
-    },
-    stringAlignToAlign: function (source: string): Align | number {
-        switch (source) {
-            case 'L':
-                return Align.Left;
-            case 'C':
-                return Align.Center;
-            case 'R':
-                return Align.Right;
-            case 'T':
-                return Align.Top;
-            case 'B':
-                return Align.Bottom;
-            default:
-                return +source;
-        }
-    },
-    stringModeToRepeatMode: function (source: string): RepeatMode {
-        switch (source) {
-            case 'N':
-                return RepeatMode.Normal;
-            case 'R':
-                return RepeatMode.Repeat;
-            case 'W':
-                return RepeatMode.WaitUntilFinish;
-            case 'F':
-                return RepeatMode.DestroyAfterFinish;
-            default:
-                throw '找不到对应的循环模式：' + source;
-        }
-    },
-    typeToQuakeType: function (source: string): QuakeType {
-        switch (source) {
-            case 'Q':
-                return QuakeType.Random;
-            case 'W':
-                return QuakeType.Wave;
-            case 'B':
-                return QuakeType.Jump;
-            default:
-                throw '找不到对应的摇动类型：' + source;
-        }
-    },
-    stringToTrack: function (source: string): Soundtrack {
-        switch (source) {
-            case 'B':
-                return Soundtrack.BGM;
-            case 'B2':
-                return Soundtrack.BGM2;
-            case 'V':
-                return Soundtrack.Voice;
-            case 'V2':
-                return Soundtrack.Voice2;
-            case 'S':
-                return Soundtrack.Effect;
-            case 'S2':
-                return Soundtrack.Effect2;
-            default:
-                throw '找不到对应的音轨：' + source;
-        }
-    },
-    stringToConditionContent: function (source: string): ConditionContent[] {
-        let rawData = source.replace(/\t/g, '').split('\n').map(v => [+v[0], v.substring(1)]);
-        let maxScope = rawData.map(v => +v[0]).reduce((r, v) => v > r ? v : r, 0);
-        rawData.forEach(v => v[0] = maxScope - (+v[0]));
-        return rawData.map(v => ({ content: v[1] + '', scopeIndent: +v[0] ? +v[0] : 0 }));
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.Else) {
+        result.type = GeneralScript.CalculatorType.Else;
+        result.data = {};
+    } else if (source.$Command == LiveProject.CommandType.Elseif) {
+        result.type = GeneralScript.CalculatorType.Elseif;
+        let data: GeneralScript.CalcualtorDataConditionBase = {
+            condition: source['Calc']
+        };
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.If) {
+        result.type = GeneralScript.CalculatorType.If;
+        let data: GeneralScript.CalcualtorDataConditionBase = {
+            condition: source['Calc']
+        };
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.ImgNew) {
+        result.type = GeneralScript.CalculatorType.CreateImage;
+        let data: GeneralScript.CalculatorDataCreateImage = {
+            name: source['Name'],
+            source: source['PR_SOURCE'],
+            left: source['PR_LEFT'],
+            top: source['PR_TOP'],
+            priority: source['PR_PRIORITY']
+        };
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.ObjDel) {
+        result.type = GeneralScript.CalculatorType.DeleteObject;
+        let data: GeneralScript.CalculatorDataDeleteObject = {
+            content: source['Name']
+        };
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.Sound) {
+        result.type = GeneralScript.CalculatorType.PlaySound;
+        let data: GeneralScript.CalculatorDataSound = {
+            name: source['Name'],
+            source: source['Source'],
+            repeat: Converter.boolean(source['AutoRepeat'])
+        };
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.TextIns) {
+        result.type = GeneralScript.CalculatorType.ShouldConvertManual;
+        result.data = {
+            target: source['Target'],
+            content: source['Text'],
+            record: Converter.boolean(source['Memory']),
+            wait: Converter.boolean(source['Wait']),
+            stopEvent: Converter.boolean(source['StopEvent'])
+        };
+    } else if (source.$Command == LiveProject.CommandType.VarDel) {
+        result.type = GeneralScript.CalculatorType.ClearVariable;
+        let data: GeneralScript.CalculatorDataClearVariable = {
+            content: source['Name']
+        };
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.VarNew) {
+        result.type = GeneralScript.CalculatorType.CreateVariable;
+        let data: GeneralScript.CalculatorDataCreateVariable= {
+            content: Converter.calculatorVariable(source)
+        };
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.MovieStop) {
+        result.type = GeneralScript.CalculatorType.StopMedia;
+        let data: GeneralScript.CalculatorDataStopMedia= {
+            name: source['Target'],
+            fadeTime: +source['Time'] / 1000
+        };
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.Wait) {
+        result.type = GeneralScript.CalculatorType.Pause;
+        let data: GeneralScript.CalculatorDataPause= {
+            time: +source['Time'] / 1000,
+            condition: source['Calc']
+        };
+        result.data = data;
+    } else if (source.$Command == LiveProject.CommandType.While) {
+        result.type = GeneralScript.CalculatorType.While;
+        let data: GeneralScript.CalculatorDataWhile= {
+            init: source['Init'],
+            condition: source['Calc'],
+            loop: source['Loop']
+        };
+        result.data = data;
     }
-};
+    return result;
+}
 
+function groupCommand(source: LiveScene.Command[], pointer: number, initialStyle: GeneralScript.CommandContentText): { lastPointer: number, result: GeneralScript.CommandContentText[] } {
+    let endPosition = pointer;
+    let result: GeneralScript.CommandContentText[] = [];
+    let i = pointer;
+    if (source[i].type == LiveScene.CommandType.FONT) {
+        endPosition = _.findIndex(source, e => e.type == LiveScene.CommandType.FONT_END, pointer);
+        initialStyle.size = +source[i].param['SIZE'];
+        initialStyle.color = source[i].param['COLOR'];
+        initialStyle.borderWidth = +source[i].param['BORDER'];
+        initialStyle.borderColor = source[i].param['BCOLOR'];
+    }
+    if (source[i].type == LiveScene.CommandType.B) {
+        endPosition = _.findIndex(source, e => e.type == LiveScene.CommandType.B_END, pointer);
+        initialStyle.bold = true;
+    }
+    if (source[i].type == LiveScene.CommandType.I) {
+        endPosition = _.findIndex(source, e => e.type == LiveScene.CommandType.I_END, pointer);
+        initialStyle.italic = true;
+    }
+    if (source[i].type == LiveScene.CommandType.U) {
+        endPosition = _.findIndex(source, e => e.type == LiveScene.CommandType.U_END, pointer);
+        initialStyle.underline = true;
+    }
+    if (source[i].type == LiveScene.CommandType.PLAINTEXT) {
+        endPosition = i + 1;
+        i--;
+    }
+    i++;
+    while (i < endPosition) {
+        if (source[i].type != LiveScene.CommandType.PLAINTEXT) {
+            let parseResult = groupCommand(source, i, initialStyle);
+            result = result.concat(parseResult.result);
+            i = parseResult.lastPointer + 1;
+            continue;
+        }
+        let text = _.cloneDeep(initialStyle);
+        text.text = source[i].param[LiveScene.CommandType.PLAINTEXT]
+        result.push(text);
+        i++;
+    }
+    if (!source[i]) {
+        // 不需要处理
+    } else if (source[i].type == LiveScene.CommandType.FONT_END) {
+        initialStyle.size = null;
+        initialStyle.color = null;
+        initialStyle.borderWidth = null;
+        initialStyle.borderColor = null;
+    } else if (source[i].type == LiveScene.CommandType.B_END) {
+        initialStyle.bold = null;
+    } else if (source[i].type == LiveScene.CommandType.I_END) {
+        initialStyle.italic = null;
+    } else if (source[i].type == LiveScene.CommandType.U_END) {
+        initialStyle.underline = null;
+    }
+    return { lastPointer: i, result: result };
+}

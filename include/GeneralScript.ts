@@ -1,158 +1,57 @@
-import { LiveMakerSceneCommand } from './LiveMakerSceneCode';
-
 export interface Project {
     title: string;
-    width: number;
-    height: number;
+    screenSize: Vector;
+    backgroundColor: number;
     scene: Scene[];
-    background: string;
-    variable: Variable<any>[];
-    messagebox: Messagebox[];
-    cg: string[];
+    variable: Variable[];
+    dialogueBox: DialogueBox[];
+    gallery: string[];
+    extendedResource: {
+        menuFile: { [path: string]: Menu },
+        animationFile: { [path: string]: Animation[] }
+    };
 }
 
-export interface Messagebox {
+export interface DialogueBox {
     name: string;
-    font: MessageboxFont;
-    backgroundColor: string;
-    backgroundImage: string;
-    centerX: number;
-    centerY: number;
-    width: number;
-    height: number;
-    marginTop: number;
-    marginBottom: number;
-    marginRight: number;
-    marginLeft: number;
+    font: Font;
+    backgroundColor?: number;
+    backgroundImage?: string;
+    area: Rectangle;
     alpha: number;
-    cursorImage: string;
-    cursorX: number;
-    cursorY: number;
-    nextPageImage: string;
+    margin: {
+        top: number,
+        left: number,
+        right: number,
+        bottom: number
+    };
+    cursor: {
+        image: string,
+        position: Point,
+        clickToContinueImage: string
+    }
 }
 
-export interface MessageboxFont {
-    antialias: boolean;
+export interface Font {
     size: number;
-    lineMargin: number;
-    color: string;
-    colorLink: string;
-    colorHover: string;
-    shadow: number;
-    shadowColor: string;
-    border: number;
-    borderColor: string;
+    color: number;
+    borderSize: number;
+    borderColor: number;
     fontFamily: string;
-    fontChangeabled: boolean;
 }
 
 export interface Scene {
     id: number;
     name: string;
-    bootstrap: number;
-    variable: Variable<any>[];
-    block: Block<any>[];
+    entrance: number;
+    variable: Variable[];
+    block: Block[];
 }
 
-export interface Block<T> {
-    id: number;
-    type: BlockType;
-    name: string;
-    next: Condition[];
-    data: T;
-}
-
-export interface Condition {
-    targetId: number;
-    condition: ConditionContent[];
-}
-
-export interface ConditionContent {
-    content: string;
-    scopeIndent: number;
-}
-
-export enum BlockType {
-    SceneStart,
-    SceneEnd,
-    Normal,
-    Calculator,
-    Choice,
-    Menu,
-    Input,
-    Navigator,
-    Jump,
-    Exit
-}
-
-export interface BlockMenu {
-    item: BlockMenuItem[];
-    fadeIn: number;
-    fadeOut: number;
-    canCancel: boolean;
-    hoverSound: string;
-    clickSound: string;
-    timeLimitation: number;
-    condition: BlockMenuCondition[];
-    visibleCondition: BlockMenuCondition[];
-    enableCondition: BlockMenuCondition[];
-}
-
-export interface BlockMenuCondition {
-    choice: string;
-    condition: ConditionContent[];
-}
-
-export interface BlockNormal {
-    trackHistory: boolean;
-    skipLastEmptyLine: boolean;
-    content: Command[];
-}
-
-export interface BlockInput {
-    title: string;
-    positionX: Align | number;
-    positionY: Align | number;
-    enableCancel: boolean;
-    content: Input[];
-}
-
-export interface BlockJump {
-    target: number;
-}
-
-export interface BlockNavigator {
-    target: number;
-    targetPage?: SystemPage;
-}
-
-export interface BlockCalculator {
-    variable: Variable<any>[];
-    code: Code[];
-}
-
-export interface BlockChoice {
-    choice: Choice[];
-    cancelable: boolean;
-    hoverSound: string;
-    selectSound: string;
-    time: number | Animation[];
-    positionX: Align | number;
-    positionY: Align | number;
-    align: Align;
-    enableCut: boolean;
-}
-
-export interface Code {
-    type: CalculatorType;
-    data: CalculatorData;
-    scopeIndent: number;
-}
-
-export interface Variable<T> {
+export interface Variable {
     name: string;
     type: VariableType;
-    value: T;
+    value: number | boolean | string;
     scope: VariableScope;
 }
 
@@ -165,15 +64,121 @@ export enum VariableType {
 
 export enum VariableScope {
     Normal,
-    Static,
-    AutoRemove,
-    Local
+    Static
+}
+
+export interface Block {
+    id: number;
+    type: BlockType;
+    name: string;
+    next: TargetWithCondition[];
+    data: BlockDataBase;
+}
+
+export enum BlockType {
+    SceneStart,
+    SceneEnd,
+    Normal,
+    Calculator,
+    Choice,
+    Menu,
+    Input,
+    Call,
+    Jump,
+    Exit
+}
+
+export interface TargetWithCondition {
+    target: number;
+    condition: Condition[];
+}
+
+export interface Condition {
+    content: string;
+    scopeIndent: number;
+}
+
+export interface BlockDataBase { }
+
+export interface BlockDataWithName extends BlockDataBase {
+    name: string;
+}
+
+export interface BlockDataMenu extends BlockDataWithName {
+    fadeIn: number;
+    fadeOut: number;
+    canCancel: boolean;
+    hoverSound: string;
+    clickSound: string;
+    timeLimitation: number;
+    condition: MenuCondition[];
+}
+
+export interface Menu {
+    item: MenuItem[];
+}
+
+export interface MenuItem {
+    name: string;
+    position: Point;
+    preview?: {
+        position: Point,
+        image: string
+    };
+    idleImage: string;
+    hoverImage: string;
+}
+
+export interface MenuCondition {
+    choice: string;
+    condition: Condition[];
+}
+
+export interface BlockDataInput extends BlockDataBase {
+    title: string;
+    content: Input[];
+}
+
+export interface Input {
+    maxLength: number;
+    minLength: number;
+    title: string;
+    storedVariableName: string;
+}
+
+export interface BlockDataJump extends BlockDataBase {
+    target: number;
+}
+
+export interface BlockDataNavigator extends BlockDataJump {
+    page?: SystemPage;
+}
+
+export enum SystemPage {
+    Load,
+    Save,
+    Gallery,
+    Event,
+    Soundtrack,
+    MainMenu,
+    GameMenu
+}
+
+export interface BlockDataCalculator extends BlockDataBase {
+    variable: Variable[];
+    code: Code[];
+}
+
+export interface Code {
+    type: CalculatorType;
+    data: CalculatorDataBase;
+    scopeIndent: number;
 }
 
 export enum CalculatorType {
-    Calc,
-    VarNew,
-    VarDel,
+    RawCode,
+    CreateVariable,
+    ClearVariable,
     If,
     Elseif,
     Else,
@@ -181,104 +186,79 @@ export enum CalculatorType {
     Break,
     Continue,
     Call,
-    Wait,
-    ObjDel,
-    ImageNew,
-    Sound,
+    Pause,
+    DeleteObject,
+    CreateImage,
+    PlaySound,
     StopMedia,
-    TextIns
+    ShouldConvertManual
 }
 
-export interface CalculatorData { }
+export interface CalculatorDataBase { }
 
-export interface CalculatorCalcData extends CalculatorData {
-    line: string;
+export interface CalculatorDataContentBase<T> extends CalculatorDataBase {
+    content: T;
 }
 
-export interface CalculatorVarNewData extends CalculatorData {
-    name: string;
-    value: any;
-    scope: VariableScope;
-    type: VariableType;
-}
-
-export interface CalculatorVarDelData extends CalculatorData {
-    name: string;
-}
-
-export interface CalculatorIfData extends CalculatorData {
+export interface CalcualtorDataConditionBase extends CalculatorDataBase {
     condition: string;
 }
 
-export interface CalculatorElseifData extends CalculatorData {
-    condition: string;
-}
+export interface CalculatorDataRawCode extends CalculatorDataContentBase<string> { }
 
-export interface CalculatorElseData extends CalculatorData { }
+export interface CalculatorDataCreateVariable extends CalculatorDataContentBase<Variable> { }
 
-export interface CalculatorWhileData extends CalculatorData {
+export interface CalculatorDataClearVariable extends CalculatorDataContentBase<string> { }
+
+export interface CalculatorDataWhile extends CalcualtorDataConditionBase {
     init: string;
-    condition: string;
     loop: string;
 }
 
-export interface CalculatorBreakData extends CalculatorData {
-    condition: string;
-}
-
-export interface CalculatorContinueData extends CalculatorData {
-    condition: string;
-}
-
-export interface CalculatorCallData extends CalculatorData {
-    page: string;
-    result: string;
+export interface CalculatorDataCall extends CalcualtorDataConditionBase {
+    target: string;
     param: string[];
-    condition: string;
+    resultStoredVariable: string;
 }
 
-export interface CalculatorWaitData extends CalculatorData {
-    condition: string;
+export interface CalculatorDataPause extends CalcualtorDataConditionBase {
     time: number;
-    stopEvent: boolean;
 }
 
-export interface CalculatorObjDelData extends CalculatorData {
-    name: string;
-}
+export interface CalculatorDataDeleteObject extends CalculatorDataContentBase<string> { }
 
-export interface CalculatorImageNewData extends CalculatorData {
+export interface CalculatorDataCreateImage extends CalculatorDataBase {
     name: string;
     source: string;
-    left: number | string;
-    top: number | string;
-    priority: number;
+    priority: number | string; // 可能存在表达式
+    left: number | string; // 可能存在表达式
+    top: number | string; // 可能存在表达式
 }
 
-export interface CalculatorSoundData extends CalculatorData {
+export interface CalculatorDataSound extends CalculatorDataBase {
     name: string;
     source: string;
     repeat: boolean;
 }
 
-export interface CalculatorStopMediaData extends CalculatorData {
+export interface CalculatorDataStopMedia extends CalculatorDataBase {
     name: string;
-    time: number;
-    wait: boolean;
+    fadeTime: number | string; // 可能存在表达式
 }
 
-export interface CalculatorTextInsData extends CalculatorData {
-    target: string;
-    content: string;
-    record: boolean;
-    wait: boolean;
-    stopEvent: boolean;
+export interface CalculatorDataShouldConvertManual extends CalculatorDataContentBase<any> { }
+
+export interface BlockDataChoice {
+    choice: Choice[];
+    hoverSound: string;
+    selectSound: string;
+    time: number | string; // 可能存在表达式
+    align: Align;
 }
 
 export interface Choice {
     title: string;
     condition: string;
-    executable: boolean;
 }
 
 export enum Align {
@@ -289,16 +269,38 @@ export enum Align {
     Bottom = -5
 }
 
-export interface Input {
-    maxLength: number;
-    minLength: number;
-    title: string;
-    targetVariable: string;
+export interface BlockDataNormal extends BlockDataBase {
+    content: Command[];
 }
 
 export interface Command {
     type: CommandType;
     content: CommandContentBase;
+}
+
+export enum CommandType {
+    Text,
+    Effect,
+    MenuToggle,
+    SaveLoadToggle,
+    Image,
+    ChangeImage,
+    DestroyImage,
+    Sound,
+    ChangeVolume,
+    StopSound,
+    MessageBox,
+    ChangeMessageBox,
+    DestroyMessageBox,
+    Movie,
+    Quake,
+    StopQuake,
+    ShowVariableContent,
+    Wait,
+    WaitForClick,
+    WaitUntilFinish,
+    WaitAndClear,
+    ChangeTextSpeed
 }
 
 export interface CommandContentBase { }
@@ -309,39 +311,21 @@ export interface CommandContentText extends CommandContentBase {
     color?: string;
     borderWidth?: number;
     borderColor?: string;
-    shadowOffset?: number;
-    shadowColor?: string;
     bold?: boolean;
     italic?: boolean;
     underline?: boolean;
-}
-
-export interface CommandContentImageAnimation extends CommandContentImage {
-    animation: Animation[];
-}
-
-export interface CommandContentChangeImageAnimation extends CommandContentChangeImage {
-    animation: Animation[];
 }
 
 export interface CommandContentEffect extends CommandContentNameTarget {
     type: EffectType;
     time: number;
     reverse: boolean;
-    source?: string;
     default: boolean;
-    parameter: string[];
+    parameter: any[];
 }
 
 export interface CommandContentToggle extends CommandContentBase {
     value: boolean;
-}
-
-export interface CommandContentWait extends CommandContentBase {
-    time: number;
-    targetName?: string;
-    clickSkip: boolean;
-    allowQuickSkip: boolean;
 }
 
 export interface CommandContentTextSpeed extends CommandContentBase {
@@ -358,10 +342,6 @@ export interface CommandContentTimeTarget extends CommandContentBase {
 
 export interface CommandContentMovie extends CommandContentBase {
     source: string;
-    zoomPencentage: number;
-    x: Align | number;
-    y: Align | number;
-    mode: RepeatMode;
 }
 
 export interface CommandContentQuake extends CommandContentBase {
@@ -399,13 +379,13 @@ export interface CommandContentImage extends CommandContentChangeImage {
 
 export interface CommandContentChangeImage extends CommandContentNameTarget {
     source: string;
-    useFlip: string;
+    effect: string;
     mode: RepeatMode;
 }
 
 export interface CommandContentDestroyImage extends CommandContentBase {
     target: string[],
-    useFlip: string;
+    effect: string;
 }
 
 export interface Animation {
@@ -449,16 +429,6 @@ export interface Animation {
     }
 }
 
-export interface Point {
-    x: number;
-    y: number;
-}
-
-export interface Rectangle extends Point {
-    width: number;
-    height: number;
-}
-
 export enum Ease {
     None,
     In,
@@ -485,31 +455,6 @@ export enum Soundtrack {
     Voice2,
     Effect,
     Effect2
-}
-
-export enum CommandType {
-    Text,
-    Effect,
-    MenuToggle,
-    SaveLoadToggle,
-    Image,
-    ChangeImage,
-    DestroyImage,
-    Sound,
-    ChangeVolume,
-    StopSound,
-    MessageBox,
-    ChangeMessageBox,
-    DestroyMessageBox,
-    Movie,
-    Quake,
-    StopQuake,
-    ShowVariableContent,
-    Wait,
-    WaitForClick,
-    WaitUntilFinish,
-    WaitAndClear,
-    ChangeTextSpeed
 }
 
 export enum TextSpeed {
@@ -560,23 +505,14 @@ export enum EffectType {
     BlockRandom
 }
 
-export interface BlockMenuItem {
-    left: number;
-    top: number;
-    previewLeft: number;
-    previewTop: number;
-    imagePath: string;
-    hoverPath: string;
-    previewPath: string;
-    name: string;
+export interface Point {
+    x: number;
+    y: number;
 }
 
-export enum SystemPage {
-    Load,
-    Save,
-    Gallery,
-    Event,
-    Soundtrack,
-    MainMenu,
-    GameMenu
+export interface Vector {
+    width: number;
+    height: number;
 }
+
+export interface Rectangle extends Point, Vector { }

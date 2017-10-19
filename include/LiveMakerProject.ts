@@ -1,268 +1,234 @@
-export interface LiveMakerProject {
-    Version: string;
-    FolderTree: {
-        Opened: string,
-        Items: LiveMakerProjectFolderTreeItem[]
-    };
-    Folder: {
-        Item: LiveMakerProjectScene[]
-    };
+export interface Project {
+    Version: number;
+    FolderTree: FolderTree;
+    Folder: PropertyWithItem<Scene>;
     NewItemId: string;
-    Priority: {
-        Item: LiveMakerProjectPriorityItem[]
-    };
+    Priority: PropertyWithItem<PriorityItem>;
     Title: string;
-    ScreenCX: string;
-    ScreenCY: string;
-    BGColor: string;
-    MessageBox: {
-        Item: LiveMakerProjectMessageBoxItem[]
-    };
-    Var: {
-        Item: LiveMakerProjectVarItem[]
-    };
-    CGMode: {
-        List: {
-            Item: string[]
-        };
-        X: string;
-        Y: string;
-        Width: string;
-        Height: string;
-        Column: string;
-        Row: string;
-        BG: string;
-        Menu: string;
-        NumberCG: FilePositionPair;
-        PercentCG: FilePositionPair;
-    };
+    ScreenCX: number;
+    ScreenCY: number;
+    BGColor: number;
+    MessageBox: PropertyWithItem<MessageBoxItem>;
+    Var: PropertyWithItem<Variable>;
+    CGMode: Gallery;
 }
 
-export interface LiveMakerProjectFolderTreeItem {
-    ID: string;
+export interface PropertyWithItem<T> {
+    Item: T | T[];
+}
+
+export interface Gallery {
+    List: PropertyWithItem<string>;
+    X: number;
+    Y: number;
+    Width: number;
+    Height: number;
+    Column: number;
+    Row: number;
+    BG: string;
+    Menu: string;
+    NumberCG: FileWithPosition;
+    PercentCG: FileWithPosition;
+}
+
+export interface FolderTree extends PropertyWithItem<FolderTreeItem> {
+    Opened: number;
+}
+
+export interface FolderTreeItem {
+    ID: number;
     Name: String;
-    Opened: BooleanInString;
+    Opened: 1 | 0;
 }
 
-export interface LiveMakerProjectScene {
-    ID: string;
+export interface Scene {
+    ID: number;
     Caption: string;
-    Node: {
-        Item: LiveMakerProjectNodeBase[]
-    };
-    Var: {
-        Item: LiveMakerProjectSceneVar[]
-    };
+    Node: PropertyWithItem<NodeBase>;
+    Var: '' | PropertyWithItem<Variable>;
 }
 
-export interface LiveMakerProjectSceneVar {
-    Name: string;
-    VarType: LiveMakerProjectVarItemType;
-    InitValue: string;
-    VarScope: LiveMakerProjectVarItemScope;
-}
-
-export interface LiveMakerProjectNodeBase {
-    ID: string;
-    Type: LiveMakerProjectNodeType;
+export interface NodeBase {
+    ID: number;
+    Type: NodeType;
     Caption: string;
-    Jump: {
-        Item: CondIDPair[]
-    };
+    Jump: '' | PropertyWithItem<JumpCondition>;
 }
 
-export enum LiveMakerProjectNodeType {
-    SceneStart = "2",
-    Scene = "0",
-    Calc = "6",
-    Choice = "11",
-    Menu = "12",
-    Input = "13",
-    Navigate = "4",
-    Exit = "9",
-    SceneEnd = "3",
-    Jump = "5"
+export enum NodeType {
+    Normal = 0,
+    SceneStart = 2,
+    SceneEnd = 3,
+    Navigate = 4,
+    Jump = 5,
+    Calc = 6,
+    Exit = 9,
+    Choice = 11,
+    Menu = 12,
+    Input = 13
 }
 
-export interface LiveMakerProjectNodeSceneStart extends LiveMakerProjectNodeBase { }
+export interface NodeSceneStart extends NodeBase { }
 
-export interface LiveMakerProjectNodeScene extends LiveMakerProjectNodeBase {
-    NotStory: BooleanInString;
-    NotCaret: BooleanInString;
+export interface NodeNormal extends NodeBase {
+    NotStory: 1 | 0;
+    NotCaret: 1 | 0;
 }
 
-export interface LiveMakerProjectNodeCalc extends LiveMakerProjectNodeBase {
-    Calc: {
-        Item: LiveMakerProjectCalcItem[]
-    };
-    Var: "" | {
-        Item: LiveMakerProjectSceneVar[]
-    };
+export interface NodeCalc extends NodeBase {
+    Calc: '' | PropertyWithItem<CalcItem>;
+    Var: '' | PropertyWithItem<Variable>;
 }
 
-export interface LiveMakerProjectNodeMenu extends LiveMakerProjectNodeBase {
+export interface NodeMenu extends NodeBase {
     Source: string;
     BGImage: string;
-    FadeinTime: string;
-    FadeoutTime: string;
-    CancelEnabled: BooleanInString;
+    FadeinTime: number;
+    FadeoutTime: number;
+    CancelEnabled: 1 | 0;
     SoundHover: string;
     SoundSelect: string;
-    TimeLimit: string;
-    Cond: {
-        Item: CondNamePair[];
-    };
-    VisibleCond: {
-        Item: CondNamePair[];
-    };
-    SelectedCond: {
-        Item: CondNamePair[];
-    };
+    TimeLimit: number;
+    Cond: '' | PropertyWithItem<MenuCondition>;
+    VisibleCond: '' | PropertyWithItem<MenuCondition>;
+    SelectedCond: '' | PropertyWithItem<MenuCondition>;
 }
 
-export interface LiveMakerProjectNodeChoice extends LiveMakerProjectNodeBase {
-    Menu: {
-        Item: LiveMakerProjectNodeChoiceMenuItem[]
-    };
-    CancelEnabled: BooleanInString;
+export interface NodeChoice extends NodeBase {
+    Menu: PropertyWithItem<ChoiceMenuItem>;
+    CancelEnabled: 1 | 0;
     SoundHover: string;
     SoundSelect: string;
-    TimeLimit: string;
-    PosX: string;
-    PosY: string;
-    HAlign: "0" | "1" | "2";
-    CutEnabled: BooleanInString;
+    TimeLimit: number | string;
+    PosX: Align | number;
+    PosY: Align | number;
+    HAlign: TextAlign;
+    CutEnabled: 0 | 1;
 }
 
-export interface LiveMakerProjectNodeInput extends LiveMakerProjectNodeBase {
+export interface NodeInput extends NodeBase {
     Prompt: string;
-    CancelEnabled: BooleanInString;
-    PosX: string;
-    PosY: string;
-    Text: {
-        Item: LiveMakerProjectNodeInputTextItem[]
-    }
+    CancelEnabled: 1 | 0;
+    PosX: Align | number;
+    PosY: Align | number;
+    Text: PropertyWithItem<InputTextItem>;
 }
 
-export interface LiveMakerProjectNodeNavigate extends LiveMakerProjectNodeBase {
-    Target: string;
+export interface NodeNavigate extends NodeBase {
+    Target: number;
     TargetPage: string;
-    Param: "" | {
-        Item: any;
-    };
+    Param: '' | PropertyWithItem<string>;
 }
 
-export interface LiveMakerProjectNodeExit extends LiveMakerProjectNodeBase { }
+export interface NodeExit extends NodeBase { }
 
-export interface LiveMakerProjectNodeSceneEnd extends LiveMakerProjectNodeBase { }
+export interface NodeSceneEnd extends NodeBase { }
 
-export interface LiveMakerProjectNodeJump extends LiveMakerProjectNodeBase {
-    Target: string;
+export interface NodeJump extends NodeBase {
+    Target: number;
     TargetPage: string;
 }
 
-export interface CondIDPair {
-    ID: string;
+export interface JumpCondition {
+    ID: number;
     Cond: string;
 }
 
-export interface CondNamePair {
+export interface MenuCondition {
     Name: string;
     Cond: string;
 }
 
-export interface LiveMakerProjectNodeChoiceMenuItem {
+export interface ChoiceMenuItem {
     Caption: string;
     Cond: string;
-    IsCalc: BooleanInString;
+    IsCalc: 1 | 0;
 }
 
-export interface LiveMakerProjectNodeInputTextItem {
+export interface InputTextItem {
     Caption: string;
-    MinLen: string;
-    MaxLen: string;
+    MinLen: number;
+    MaxLen: number;
     Param: string;
 }
 
-export interface LiveMakerProjectCalcItem {
-    $: {
-        Command: string,
-        Indent: BooleanInString,
-        Mute: BooleanInString,
-        NotUpdate: BooleanInString,
-        Color: string
-    };
+export interface CalcItem {
+    $Command: CommandType;
+    $Indent: number;
+    $Mute: 1 | 0;
+    $NotUpdate: 1 | 0;
+    $Color: number;
     [key: string]: any;
 }
 
-export interface LiveMakerProjectPriorityItem {
+export interface PriorityItem {
     Name: string;
-    Value: string;
+    Value: number;
 }
 
-export interface LiveMakerProjectMessageBoxItem {
+export interface MessageBoxItem {
     Name: string;
-    Font: LiveMakerProjectMessageBoxItemFont;
-    BGColor: string;
+    Font: MessageBoxFont;
+    BGColor: number;
     BGFile: string;
-    PosX: string;
-    PosY: string;
-    Width: string;
-    Height: string;
-    BGMarginL: string;
-    BGMarginT: string;
-    BGMarginR: string;
-    BGMarginB: string;
-    BGAlpha: string;
+    PosX: number;
+    PosY: number;
+    Width: number;
+    Height: number;
+    BGMarginL: number;
+    BGMarginT: number;
+    BGMarginR: number;
+    BGMarginB: number;
+    BGAlpha: number;
     CsrClick: string;
-    CsrPosX: string;
-    CsrPosY: string;
+    CsrPosX: number;
+    CsrPosY: number;
     SEClick: string;
 }
 
-export interface LiveMakerProjectMessageBoxItemFont {
-    Antialias: BooleanInString;
-    Size: string;
-    Space: string;
-    Color: string;
-    LinkColor: string;
-    HoverColor: string;
-    Shade: string;
-    ShadeColor: string;
-    Border: string;
-    BorderColor: string;
+export interface MessageBoxFont {
+    Antialias: 1 | 0;
+    Size: number;
+    Space: number;
+    Color: number;
+    LinkColor: number;
+    HoverColor: number;
+    Shade: 1 | 0;
+    ShadeColor: number;
+    Border: number;
+    BorderColor: number;
     Name: string;
-    FontChangeabled: BooleanInString;
+    FontChangeabled: 1 | 0;
 }
 
-export interface LiveMakerProjectVarItem {
+export interface Variable {
     Name: string;
-    VarType: LiveMakerProjectVarItemType;
+    VarType: VariableType;
     InitValue: string;
-    VarScope: LiveMakerProjectVarItemScope;
+    VarScope: VariableScope;
 }
 
-export enum LiveMakerProjectVarItemType {
-    Number = "1",
-    Float = "2",
-    Boolean = "3",
-    String = "4"
+export enum VariableType {
+    Number = 1,
+    Float = 2,
+    Boolean = 3,
+    String = 4
 }
 
-export enum LiveMakerProjectVarItemScope {
-    Normal = "0",
-    Unknown = "1",
-    Static = "2"
+export enum VariableScope {
+    Normal = 0,
+    Other = 1,
+    Static = 2
 }
 
-export enum LiveMakerProjectCalcVarItemScope {
-    Normal = "0",
-    AutoRemove = "1",
-    Local = "2",
-    Static = "3"
+export enum CalculatorVariableScope {
+    Normal = 0,
+    AutoRemove = 1,
+    Local = 2,
+    Static = 3
 }
 
-export enum LiveMakerProjectVarCommandType {
+export enum CommandType {
     Calc = "Calc",
     VarNew = "VarNew",
     VarDel = "VarDel",
@@ -277,16 +243,26 @@ export enum LiveMakerProjectVarCommandType {
     ObjDel = "ObjDel",
     ImgNew = "ImgNew",
     Sound = "Sound",
+    MovieStop = "MovieStop",
     TextIns = "TextIns"
 }
 
-export enum BooleanInString {
-    True = "1",
-    False = "0"
+export enum Align {
+    Left = 'L',
+    Right = 'R',
+    Center = 'C',
+    Top = 'T',
+    Bottom = 'B'
 }
 
-export interface FilePositionPair {
+export enum TextAlign {
+    Left = 0,
+    Center = 1,
+    Right = 2
+}
+
+export interface FileWithPosition {
     File: string;
-    X: string;
-    Y: string;
+    X: number;
+    Y: number;
 }

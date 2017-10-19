@@ -1,11 +1,11 @@
-export interface LiveMakerMenu {
+export interface Menu {
     BGFile: string;
     Button: {
-        Item: LiveMakerMenuItem[]
+        Item: MenuItem[]
     };
 }
 
-export interface LiveMakerMenuItem {
+export interface MenuItem {
     Left: number;
     Top: number;
     PrevLeft: number;
