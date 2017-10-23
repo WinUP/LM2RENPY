@@ -6,3 +6,8 @@ export enum SoundChannel {
     Voice = 'voice',
     Voice2 = 'voice2'
 }
+
+export interface NameWithId {
+    name: string;
+    id: string;
+}

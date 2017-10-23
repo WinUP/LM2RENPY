@@ -1,8 +1,9 @@
 import * as GeneralScript from './include/GeneralScript';
 import * as LiveProject from './include/LiveMakerProject';
+import * as LiteScript from './include/LiteScript';
 import * as LiveScene from './include/LiveMakerSceneCode';
-import * as LiveMenu from './include/LiveMakerMenu';
 import * as Utilities from './Utilities';
+import * as LiveMenu from './include/LiveMakerMenu';
 
 export function sceneVariable(source: LiveProject.Variable): GeneralScript.Variable {
     let result: GeneralScript.Variable = {
@@ -284,5 +285,32 @@ export function soundtrack(source: string): GeneralScript.Soundtrack {
             return GeneralScript.Soundtrack.Effect2;
         default:
             throw '找不到对应的音轨：' + source;
+    }
+}
+
+export function liteBlockType(source: GeneralScript.BlockType): LiteScript.BlockType {
+    switch (source) {
+        case GeneralScript.BlockType.Calculator:
+            return LiteScript.BlockType.Calculator;
+        case GeneralScript.BlockType.Call:
+            return LiteScript.BlockType.Call;
+        case GeneralScript.BlockType.Choice:
+            return LiteScript.BlockType.Choice;
+        case GeneralScript.BlockType.Exit:
+            return null;
+        case GeneralScript.BlockType.Input:
+            return LiteScript.BlockType.Input;
+        case GeneralScript.BlockType.Jump:
+            return LiteScript.BlockType.Jump;
+        case GeneralScript.BlockType.Menu:
+            return LiteScript.BlockType.Menu;
+        case GeneralScript.BlockType.Normal:
+            return LiteScript.BlockType.Normal;
+        case GeneralScript.BlockType.SceneEnd:
+            return LiteScript.BlockType.SceneEnd;
+        case GeneralScript.BlockType.SceneStart:
+            return LiteScript.BlockType.SceneStart;
+        default:
+            throw `Cannot convert GeneralScript BlockType ${source} to LiteScript BlockType: No suitable target`;
     }
 }

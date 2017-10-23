@@ -244,7 +244,8 @@ export enum CommandType {
     ImgNew = "ImgNew",
     Sound = "Sound",
     MovieStop = "MovieStop",
-    TextIns = "TextIns"
+    TextIns = "TextIns",
+    Comment = "Comment"
 }
 
 export enum Align {

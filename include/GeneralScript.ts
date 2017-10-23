@@ -150,7 +150,7 @@ export interface BlockDataJump extends BlockDataBase {
     target: number;
 }
 
-export interface BlockDataNavigator extends BlockDataJump {
+export interface BlockDataCall extends BlockDataJump {
     page?: SystemPage;
 }
 
@@ -191,6 +191,7 @@ export enum CalculatorType {
     CreateImage,
     PlaySound,
     StopMedia,
+    Comment,
     ShouldConvertManual
 }
 

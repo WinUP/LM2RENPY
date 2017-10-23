@@ -185,7 +185,7 @@ export function parseProject(source: LiveProject.Project): GeneralScript.Project
                 block.data = targetData;
             } else if (block.type == GeneralScript.BlockType.Call) {
                 let nodeData = node as LiveProject.NodeNavigate;
-                let targetData: GeneralScript.BlockDataNavigator = {
+                let targetData: GeneralScript.BlockDataCall = {
                     target: nodeData.Target
                 };
                 block.data = targetData;
@@ -760,13 +760,16 @@ function parseCode(source: LiveProject.CalcItem): GeneralScript.Code {
         result.data = data;
     } else if (source.$Command == LiveProject.CommandType.TextIns) {
         result.type = GeneralScript.CalculatorType.ShouldConvertManual;
-        result.data = {
-            target: source['Target'],
-            content: source['Text'],
-            record: Converter.boolean(source['Memory']),
-            wait: Converter.boolean(source['Wait']),
-            stopEvent: Converter.boolean(source['StopEvent'])
+        let data: GeneralScript.CalculatorDataShouldConvertManual = {
+            content: {
+                target: source['Target'],
+                content: source['Text'],
+                record: Converter.boolean(source['Memory']),
+                wait: Converter.boolean(source['Wait']),
+                stopEvent: Converter.boolean(source['StopEvent'])
+            }
         };
+        result.data = data;
     } else if (source.$Command == LiveProject.CommandType.VarDel) {
         result.type = GeneralScript.CalculatorType.ClearVariable;
         let data: GeneralScript.CalculatorDataClearVariable = {
@@ -795,13 +798,20 @@ function parseCode(source: LiveProject.CalcItem): GeneralScript.Code {
         result.data = data;
     } else if (source.$Command == LiveProject.CommandType.While) {
         result.type = GeneralScript.CalculatorType.While;
-        let data: GeneralScript.CalculatorDataWhile= {
+        let data: GeneralScript.CalculatorDataWhile = {
             init: source['Init'],
             condition: source['Calc'],
             loop: source['Loop']
         };
         result.data = data;
-    }
+    } else if (source.$Command == LiveProject.CommandType.Comment) {
+        result.type = GeneralScript.CalculatorType.Comment;
+        let data: GeneralScript.CalculatorDataRawCode = {
+            content: source["Name"]
+        };
+        result.data = data;
+    } else
+        throw `Unknow calculator type ${source.$Command}!`;
     return result;
 }
 

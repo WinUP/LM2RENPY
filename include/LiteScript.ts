@@ -19,7 +19,7 @@ export class Project {
         return this._galleryImages;
     }
 
-    public get resources(): Resource[] {
+    public get resources(): Resource<any>[] {
         return this._extraResources;
     }
 
@@ -65,7 +65,12 @@ export class Project {
         return result ? result : null;
     }
 
-    public findResourceByPath<T extends Resource>(path: string): T {
+    public findCharacter(id: string): CharacterResource {
+        let result = this._extraResources.find(resource => resource.type == ResourceType.Character && resource.id == id);
+        return result ? result : null;
+    }
+
+    public findResourceByPath<T extends Resource<any>>(path: string): T {
         let result = this._galleryImages.find(image => image.path == path);
         if (!result)
             result = this._extraResources.find(resource => resource.path == path);
@@ -119,6 +124,21 @@ export class Project {
         this._globalVariables.push(result);
         return result;
     }
+
+    public addCharacter(name: string, id?: string): string {
+        let targetId = id ? id : Utilities.newUUID();
+        if (this._extraResources.find(resource => resource.type == ResourceType.Character && resource.id == id))
+            throw `Cannot add character: Same id is already existed`;
+        if (this._extraResources.find(resource => resource.type == ResourceType.Character && (resource as CharacterResource).extraData == name))
+            throw `Cannot add character: Same character name is already existed`;
+        this._extraResources.push({
+            id: targetId,
+            path: null,
+            type: ResourceType.Character,
+            extraData: name
+        });
+        return targetId;
+    }
 }
 
 // Resource
@@ -136,7 +156,8 @@ export enum ResourceType {
     Animation = 2,
     Menu = 3,
     Effect = 4,
-    Movie = 5
+    Movie = 5,
+    Character = 6
 }
 
 export interface ImageResource extends Resource<void> { }
@@ -151,6 +172,8 @@ export interface EffectResource extends Resource<Effect> { }
 
 export interface MovieResource extends Resource<void> { }
 
+export interface CharacterResource extends Resource<string> { }
+
 export interface Menu {
     item: MenuItem[];
 }
@@ -163,7 +186,7 @@ export interface MenuItem {
         image: ImageResource
     };
     idleImage: ImageResource;
-    hoverImage: ImageResource;
+    hoverImage?: ImageResource;
 }
 
 export interface Effect {
@@ -266,8 +289,6 @@ export class File {
             throw `Cannot add variable: name cannot be null`;
         if (this.findVariable(name) != null)
             throw `Cannot add variable to file ${this._id} with name ${name}: Same name has already in variable list`;
-        if (this._project.findVariable(name) != null)
-            throw `Cannot add variable to file ${this._id} with name ${name}: Same name has already in global variable list`;
         let result = new Variable(name, type, scope);
         this._variable.push(result);
         return result;
@@ -329,21 +350,21 @@ export class Block {
         this._type = type;
         this._file = file;
         if ((type & (BlockType.SceneStart | BlockType.SceneEnd)) != 0)
-            this._content = new BlockDataBase(file);
+            this._content = new BlockDataBase(this);
         else if (type == BlockType.Normal)
-            this._content = new BlockDataNormal(file);
+            this._content = new BlockDataNormal(this);
         else if (type == BlockType.Calculator)
-            this._content = new BlockDataCalculator(file);
+            this._content = new BlockDataCalculator(this);
         else if (type == BlockType.Choice)
-            this._content = new BlockDataChoice(file);
+            this._content = new BlockDataChoice(this);
         else if (type == BlockType.Menu)
-            this._content = new BlockDataMenu(file);
+            this._content = new BlockDataMenu(this);
         else if (type == BlockType.Input)
-            this._content = new BlockDataInput(file);
+            this._content = new BlockDataInput(this);
         else if (type == BlockType.Call)
-            this._content = new BlockDataCall(file);
+            this._content = new BlockDataCall(this);
         else if (type == BlockType.Jump)
-            this._content = new BlockDataJump(file);
+            this._content = new BlockDataJump(this);
         else
             throw `Cannot declare block with type ${type}: Target type is not known`;
     }
@@ -372,10 +393,16 @@ export class Block {
         return this._content as T;
     }
 
-    public findById(id: string, ignoreThis: boolean = false): Block {
-        if (!ignoreThis && this._id == id) return this;
+    public findById(id: string): Block {
+        return this.findByIdImplementation(id, []);
+    }
+
+    private findByIdImplementation(id: string, mappedList: string[]): Block {
+        if (this._id == id) return this;
+        if (mappedList.includes(this._id)) return null;
+        mappedList.push(this._id);
         for (let i = 0; i < this._next.length; i++) {
-            let result = this._next[i].target.findById(id);
+            let result = this._next[i].target.findByIdImplementation(id, mappedList);
             if (result) return result;
         }
         return null;
@@ -392,6 +419,20 @@ export class Block {
     public addNext(target: Block, condition: Condition[]): void {
         this._next.push({ target: target, condition: condition });
         target.addPrevious(this);
+    }
+
+    public removeNext(block: Block): void {
+        let target = this._next.find(v => v.target == block);
+        if (!target)
+            throw `Cannot remove block from next block list: Target ${block._id} is not in this block's next list`;
+        block._previous.splice(block._previous.indexOf(this), 1);
+        this._next.splice(this._next.indexOf(target), 1);
+    }
+
+    public replaceNext(original: Block, target: Block): void {
+        this._next.forEach(next => {
+            if (next.target == original) next.target = target;
+        });
     }
 
     private addPrevious(target: Block): void {
@@ -430,14 +471,14 @@ export class Condition implements Condition {
 }
 
 export class BlockDataBase {
-    private _file: File;
+    private _block: Block;
 
-    public get file(): File {
-        return this._file;
+    public get block(): Block {
+        return this._block;
     }
 
-    public constructor(file: File) {
-        this._file = file;
+    public constructor(block: Block) {
+        this._block = block;
     }
 }
 
@@ -454,7 +495,7 @@ export class BlockDataMenu extends BlockDataBase {
     public timeLimitation: number;
     private _condition: MenuCondition[] = new Array<MenuCondition>();
 
-    public condition(): MenuCondition[] {
+    public get condition(): MenuCondition[] {
         return this._condition;
     }
 
@@ -511,7 +552,7 @@ export enum SystemPage {
 export class BlockDataChoice extends BlockDataBase {
     public hoverSound: SoundResource;
     public selectSound: SoundResource;
-    public time: number | string; // 可能存在表达式
+    public time: number | AnimationResource;
     private _item: Choice[] = new Array<Choice>();
 
     public get items(): Choice[] {
@@ -533,13 +574,37 @@ export interface Choice {
 // Calculator
 
 export class BlockDataCalculator extends BlockDataBase {
-    public code: Code[] = new Array<Code>();
-    public variable: Variable[] = new Array<Variable>();
+    private _code: Code[] = new Array<Code>();
+    private _variable: Variable[] = new Array<Variable>();
+
+    public get variables(): Variable[] {
+        return this._variable;
+    }
+
+    public get codes(): Code[] {
+        return this._code;
+    }
+
+    public addVariable(name: string, type: VariableType, scope: VariableScope): Variable {
+        if (!name || name == '')
+            throw `Cannot add variable: name cannot be null`;
+        if (this.findVariable(name) != null)
+            throw `Cannot add variable to block ${this.block.id} with name ${name}: Same name has already in variable list`;
+        let result = new Variable(name, type, scope);
+        this._variable.push(result);
+        return result;
+    }
+
+    public addCode(type: CalculatorType): Code {
+        let result = new Code(type);
+        this._code.push(result);
+        return result;
+    }
 
     public findVariable(name: string): Variable {
-        let result = this.variable.find(variable => variable.name == name);
+        let result = this._variable.find(variable => variable.name == name);
         if (!result)
-            result = this.file.findVariable(name);
+            result = this.block.file.findVariable(name);
         return result ? result : null;
     }
 }
@@ -551,7 +616,7 @@ export class Code {
 
     public constructor(type : CalculatorType) {
         this._type = type;
-        if (type == CalculatorType.RawCode)
+        if ((type & (CalculatorType.RawCode | CalculatorType.Comment)) != 0)
             this._content = new CalculatorDataRawCode();
         else if ((type & (CalculatorType.CreateVariable | CalculatorType.ClearVariable)) != 0)
             this._content = new CalculatorDataVariable();
@@ -604,7 +669,8 @@ export enum CalculatorType {
     CreateImage         = 0B1000000000000, // CalculatorDataCreateImage
     PlaySound           = 0B10000000000000, // CalculatorDataSound
     StopMedia           = 0B100000000000000, // CalculatorDataStopMedia
-    ShouldConvertManual = 0B1000000000000000 // CalculatorDataShouldConvertManual
+    ShouldConvertManual = 0B1000000000000000, // CalculatorDataShouldConvertManual
+    Comment             = 0B10000000000000000 // CalculatorDataRawCode
 }
 
 export interface CalculatorDataBase { }
@@ -629,7 +695,7 @@ export class CalculatorDataWhile extends CalcualtorDataConditionBase {
 export class CalculatorDataCall extends CalcualtorDataConditionBase {
     public target: string;
     public param: string[] = new Array<string>();
-    public resultStoredVariable: string;
+    public resultStoredVariable: Variable;
 }
 
 export class CalculatorDataPause extends CalcualtorDataConditionBase {
@@ -640,7 +706,7 @@ export class CalculatorDataDeleteObject extends CalculatorDataContentBase<string
 
 export class CalculatorDataCreateImage implements CalculatorDataBase {
     public name: string;
-    public source: ImageResource;
+    public source: ImageResource | string; // 可能存在表达式
     public priority: number | string; // 可能存在表达式
     public left: number | string; // 可能存在表达式
     public top: number | string; // 可能存在表达式
@@ -648,7 +714,7 @@ export class CalculatorDataCreateImage implements CalculatorDataBase {
 
 export class CalculatorDataSound implements CalculatorDataBase {
     public name: string;
-    public source: SoundResource;
+    public source: SoundResource | string;
     public repeat: boolean;
 }
 
@@ -662,7 +728,17 @@ export class CalculatorDataShouldConvertManual extends CalculatorDataContentBase
 // Scene commands
 
 export class BlockDataNormal extends BlockDataBase {
-    public item: Command[] = new Array<Command>();
+    private _item: Command[] = new Array<Command>();
+
+    public get items(): Command[] {
+        return this._item;
+    }
+
+    public newItem(type: CommandType): Command {
+        let result = new Command(type);
+        this._item.push(result);
+        return result;
+    }
 }
 
 export class Command {
@@ -671,8 +747,8 @@ export class Command {
 
     public constructor(type: CommandType) {
         this._type = type;
-        if (type == CommandType.Text)
-            this._content = new CommandContentText();
+        if (type == CommandType.Dialogue)
+            this._content = new CommandContentDialogue();
         else if (type == CommandType.Effect)
             this._content = new CommandContentEffect();
         else if ((type & (CommandType.MenuToggle | CommandType.SaveLoadToggle)) != 0)
@@ -689,8 +765,10 @@ export class Command {
             this._content = new CommandContentChangeVolume();
         else if (type == CommandType.StopSound)
             this._content = new CommandContentStopSound();
-        else if ((type & (CommandType.MessageBox | CommandType.ChangeMessageBox | CommandType.DestroyMessageBox)) != 0)
+        else if (type == CommandType.SetMessageBoxTarget)
             this._content = new CommandContentNameTarget();
+        else if ((type & (CommandType.ShowMessageBox | CommandType.HideMessageBox)) != 0)
+            this._content = new CommandContentTimeTarget();
         else if (type == CommandType.Movie)
             this._content = new CommandContentMovie();
         else if (type == CommandType.ShowVariableContent)
@@ -715,7 +793,7 @@ export class Command {
 }
 
 export enum CommandType {
-    Text                = 0B1, // CommandContentText
+    Dialogue            = 0B1, // CommandContentText
     Effect              = 0B10, // CommandContentEffect
     MenuToggle          = 0B100, // CommandContentToggle
     SaveLoadToggle      = 0B1000, // CommandContentToggle
@@ -725,9 +803,9 @@ export enum CommandType {
     Sound               = 0B10000000, // CommandContentSound
     ChangeVolume        = 0B100000000, // CommandContentChangeVolume
     StopSound           = 0B1000000000, // CommandContentStopSound
-    MessageBox          = 0B10000000000, // CommandContentNameTarget
-    ChangeMessageBox    = 0B100000000000, // CommandContentNameTarget
-    DestroyMessageBox   = 0B1000000000000, // CommandContentNameTarget
+    ShowMessageBox      = 0B10000000000, // CommandContentTimeTarget
+    SetMessageBoxTarget = 0B100000000000, // CommandContentNameTarget
+    HideMessageBox      = 0B1000000000000, // CommandContentTimeTarget
     Movie               = 0B10000000000000, // CommandContentMovie
     ShowVariableContent = 0B100000000000000, // CommandContentVariable
     Wait                = 0B1000000000000000, // CommandContentTimeTarget
@@ -746,8 +824,23 @@ export class CommandContentVariable implements CommandContentBase {
     public target: Resource<Variable>;
 }
 
-export class CommandContentText implements CommandContentBase {
-    public text: string;
+export class CommandContentDialogue implements CommandContentBase {
+    public character: CharacterResource;
+    private _text: Text[] = new Array<Text>();
+
+    public get texts(): Text[] {
+        return this._text;
+    }
+
+    public newText(): Text {
+        let result = new Text(this);
+        this._text.push(result);
+        return result;
+    }
+}
+
+export class Text {
+    public text: string | Variable;
     public size?: number;
     public color?: string;
     public borderWidth?: number;
@@ -755,8 +848,17 @@ export class CommandContentText implements CommandContentBase {
     public bold?: boolean;
     public italic?: boolean;
     public underline?: boolean;
+    private _dialogue: CommandContentDialogue;
 
-    public changeSize(value: number | string): CommandContentText {
+    public get dialogue(): CommandContentDialogue {
+        return this._dialogue;
+    }
+
+    public constructor(dialogue: CommandContentDialogue) {
+        this._dialogue = dialogue;
+    }
+
+    public changeSize(value: number | string): Text {
         if (!this.size) this.size = 0;
         if (typeof value == 'number')
             this.size = value;
@@ -769,7 +871,7 @@ export class CommandContentText implements CommandContentBase {
         return this;
     }
 
-    public changeBorder(width: number, color: string): CommandContentText {
+    public changeBorder(width: number, color: string): Text {
         this.borderWidth = width;
         this.borderColor = color;
         return this;
@@ -813,7 +915,7 @@ export class CommandContentChangeVolume extends CommandContentTimeTarget {
 }
 
 export class CommandContentChangeImage extends CommandContentNameTarget {
-    public source: ImageResource;
+    public source: ImageResource | AnimationResource;
     public effect: EffectResource;
     public mode: RepeatMode;
 }
@@ -824,7 +926,7 @@ export class CommandContentImage extends CommandContentChangeImage {
 }
 
 export class CommandContentDestroyImage implements CommandContentBase {
-    public target: ImageResource[] = new Array<ImageResource>();
+    public target: string[] = new Array<string>();
     public effect: EffectResource;
 }
 
@@ -895,12 +997,14 @@ export enum EffectType {
 export interface Point {
     x: number;
     y: number;
+    percentageMode?: boolean;
 }
 
 export class Point implements Point {
-    public constructor(x: number, y: number) {
+    public constructor(x: number, y: number, percentageMode: boolean = false) {
         this.x = x;
         this.y = y;
+        this.percentageMode = percentageMode;
     }
 }
 

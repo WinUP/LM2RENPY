@@ -7,6 +7,11 @@ export var TranslationKeyword = {
     '\\[point]': 'point',
     '\\[quest]': 'quest',
     '\\[waiting]': 'waiting',
+    '\\[list]': 'list',
+    '\\[end]': 'end',
+    '\\[empty]': 'empty',
+    '\\[covered]': 'covered',
+    'MOVIE\\MPEG1.mpg': 'movie\\op.mp4',
     '宝物～卒業の春～': 'Treasure-Spring-of-Graduate',
     'Schoolboys Theme - 作哉小翼': 'Schoolboys Theme - Sakuya and Tsubasa-chan',
     'Schoolboys Theme - 友忍': 'Schoolboys Theme - Tomo and Shinobu',
@@ -142,6 +147,7 @@ export var TranslationKeyword = {
     '仲間に感謝！': 'G210-4',
 
     'Lo-Lo-Lovers': 'Run-Run-Lovers',
+    'LO-LO-LOVERS': 'Run-Run-Lovers',
     '傲嬌男孩子的激效療': 'Drastic-remedy-for-tsundere',
     '傲嬌男孩子的治療法': 'Drug-for-tsundere',
     '變革進行曲': 'Revolution-march',
@@ -823,8 +829,6 @@ export function mapVariable(project: GeneralScript.Project): GeneralScript.Proje
                 let data = block.data as GeneralScript.BlockDataInput;
                 data.content.forEach(content => {
                     content.storedVariableName = replaceVariableName(content.storedVariableName);
-                    if (globalVariables.includes(content.storedVariableName))
-                        content.storedVariableName = 'persistent.' + content.storedVariableName;
                 });
             }
             block.next.forEach(next => {

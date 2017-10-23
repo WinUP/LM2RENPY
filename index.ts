@@ -5,47 +5,48 @@ import * as Path from 'path';
 
 import * as LanguageConverter from './LanguageConverter';
 import * as LiveMakerParser from './LiveMakerParser';
-//import * as RenpyGenerator from './RenpyGenerator';
+import * as ProjectAnalyser from './ProjectAnalyser';
+import * as RenpyGenerator from './RenpyGenerator';
 import * as GeneralScript from './include/GeneralScript';
 import * as LiveProject from './include/LiveMakerProject';
 import * as RenpyMapper from './RenpyMapper';
+import * as LiteScript from './include/LiteScript';
 import * as Utilities from './Utilities';
 
-const TARGET_CODE_ROOT = 'C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\livemaker';
+const TARGET_CODE_ROOT = 'C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\content';
 
 let originalSource = Iconv.decode(File.readFileSync('data/novel.prj'), 'shift-jis');
 let originalProject: LiveProject.Project = Xml.parse(originalSource, Utilities.xmlParseOptions).Project;
-let project: GeneralScript.Project = null;
 
 let regenerate: boolean = !File.existsSync('lr_project_structure_local.txt');
 
+let projectSource: GeneralScript.Project = null;
 if (regenerate) {
     console.log('LiverMaker Project Converter ©2017 GILESFVK ËKITES');
     console.log('GNU LESSER GENERAL PUBLIC LICENSE Version 3');
     console.log(`Resource directory: ${LiveMakerParser.PROJECT_RESOURCE_ROOT}`);
-    project = LiveMakerParser.parseProject(originalProject);
-    File.writeFileSync('lr_general_script.txt', JSON.stringify(project, null, 2));
+    projectSource = LiveMakerParser.parseProject(originalProject);
+    File.writeFileSync('lr_general_script.txt', JSON.stringify(projectSource, null, 2));
     console.log(`General script file had saved to lr_general_script.txt [${File.statSync('lr_general_script.txt').size} bytes]`);
     console.log('');
-    project = RenpyMapper.mapUrl(project);
-    project = RenpyMapper.mapVariable(project);
-    File.writeFileSync('lr_project_structure.txt', JSON.stringify(project, null, 2));
+    projectSource = RenpyMapper.mapUrl(projectSource);
+    projectSource = RenpyMapper.mapVariable(projectSource);
+    File.writeFileSync('lr_project_structure.txt', JSON.stringify(projectSource, null, 2));
     console.log(`Ren'Py project structure had saved to lr_project_structure.txt [${File.statSync('lr_project_structure.txt').size} bytes]`);
     console.log('Convert from traditional chinese to simplified chinese...');
-    project = LanguageConverter.toSimplifiedChinese(project);
-    project = RenpyMapper.mapName(project);
-    File.writeFileSync('lr_project_structure_local.txt', JSON.stringify(project, null, 2));
+    projectSource = LanguageConverter.toSimplifiedChinese(projectSource);
+    projectSource = RenpyMapper.mapName(projectSource);
+    File.writeFileSync('lr_project_structure_local.txt', JSON.stringify(projectSource, null, 2));
     console.log(`Project structure had saved to lr_project_structure_local.txt [${File.statSync('lr_project_structure_local.txt').size} bytes]`);
 } else {
     console.log('Use cache file lr_project_structure_local.txt');
-    project = JSON.parse(File.readFileSync('lr_project_structure_local.txt').toString());
+    projectSource = JSON.parse(File.readFileSync('lr_project_structure_local.txt').toString());
 }
 console.log('Analysing project...');
-
-
-//console.log('Generate Ren\'Py code...');
-//console.log(`Target folder: ${TARGET_CODE_ROOT}`);
-//RenpyGenerator.generateRenpyCode(project, TARGET_CODE_ROOT);
+let project: LiteScript.Project = ProjectAnalyser.analyseProject(projectSource);
+console.log('Generate Ren\'Py code...');
+console.log(`Target folder: ${TARGET_CODE_ROOT}`);
+RenpyGenerator.generateRenpyCode(project, TARGET_CODE_ROOT);
 
 // This part is in purpose to replace all real resource file's name with the help of replaceUrl
 // function replaceName(root: string): void {
