@@ -315,9 +315,12 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
         if (command.type == LiteScript.CommandType.Dialogue) {
             let dialogueText = '';
             let content = command.content<LiteScript.CommandContentDialogue>();
+            let currentCharacter = content.character;
             while (i < commands.length && (command.type & (LiteScript.CommandType.Dialogue | LiteScript.CommandType.Wait | LiteScript.CommandType.WaitForClick | LiteScript.CommandType.ChangeTextSpeed | LiteScript.CommandType.ShowVariableContent)) != 0) {
                 if (command.type == LiteScript.CommandType.Dialogue) {
-                    dialogueText = styleText(content.texts);
+                    if (content.character != currentCharacter) break;
+                    content = command.content<LiteScript.CommandContentDialogue>();
+                    dialogueText += styleText(content.texts);
                 } else if (command.type == LiteScript.CommandType.Wait) {
                     dialogueText += `{w=${command.content<LiteScript.CommandContentTimeTarget>().time / 1000}}`;
                 } else if (command.type == LiteScript.CommandType.ShowVariableContent) {
@@ -326,15 +329,15 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                     dialogueText += '{w}';
                 }
                 i ++;
-                command = commands[i]
+                command = commands[i];
             }
             if (command && command.type != LiteScript.CommandType.WaitAndClear)
                 dialogueText += '{nw}';
             dialogueText = removeUselessCharacter(dialogueText);
-            if (activeCharacter == content.character)
+            if (activeCharacter == currentCharacter)
                 localFile.extend(dialogueText);
             else {
-                activeCharacter = content.character;
+                activeCharacter = currentCharacter;
                 localFile.text(activeCharacter, dialogueText);
             }
             i --;
