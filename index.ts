@@ -14,6 +14,7 @@ import * as LiteScript from './include/LiteScript';
 import * as Utilities from './Utilities';
 
 const TARGET_CODE_ROOT = 'C:\\Users\\lghol\\OneDrive\\Projects\\Renpy\\SCHOOLBOYS-AYUMI\\game\\content';
+// const TARGET_CODE_ROOT = '/mnt/c/Users/lghol/OneDrive/Projects/Renpy/SCHOOLBOYS-AYUMI/game/content';
 
 let originalSource = Iconv.decode(File.readFileSync('data/novel.prj'), 'shift-jis');
 let originalProject: LiveProject.Project = Xml.parse(originalSource, Utilities.xmlParseOptions).Project;

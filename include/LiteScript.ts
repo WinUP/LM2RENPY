@@ -247,7 +247,7 @@ export enum Ease {
 
 export class File {
     public entrance: Block;
-    public name: string;
+    private _name: string;
     private _id: string;
     private _variable: Variable[] = new Array<Variable>();
     private _project: Project;
@@ -259,6 +259,12 @@ export class File {
 
     public get id(): string {
         return this._id;
+    }
+
+    public get name(): string {
+        return this._name;
+    } public set name(value: string) {
+        this._name = value.toString()
     }
 
     public get variables(): Variable[] {
@@ -348,7 +354,7 @@ export enum VariableScope {
 // Block
 
 export class Block {
-    public name: string;
+    private _name: string;
     private _id: string;
     private _type: BlockType;
     private _next: TargetWithCondition[] = new Array<TargetWithCondition>();
@@ -382,6 +388,12 @@ export class Block {
 
     public get id(): string {
         return this._id;
+    }
+
+    public get name(): string {
+        return this._name;
+    } public set name(value: string) {
+        this._name = value.toString()
     }
 
     public get type(): BlockType {
@@ -1008,14 +1020,16 @@ export enum EffectType {
 export interface Point {
     x: number;
     y: number;
-    percentageMode?: boolean;
+    percentageModeX?: boolean;
+    percentageModeY?: boolean;
 }
 
 export class Point implements Point {
-    public constructor(x: number, y: number, percentageMode: boolean = false) {
+    public constructor(x: number, y: number, percentageModeX: boolean = false, percentageModeY: boolean = false) {
         this.x = x;
         this.y = y;
-        this.percentageMode = percentageMode;
+        this.percentageModeX = percentageModeX;
+        this.percentageModeY = percentageModeY;
     }
 }
 

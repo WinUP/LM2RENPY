@@ -1,4 +1,5 @@
 import * as UUID from 'uuid';
+import * as File from 'fs';
 
 import * as LiveProject from './include/LiveMakerProject';
 import * as LiteScript from './include/LiteScript';
@@ -342,4 +343,9 @@ export function calculateAnimationTime(animation: LiteScript.Animation[]): numbe
         if (time > stopTime) stopTime = time;
     });
     return stopTime;
+}
+
+export function readDictionary<T>(name: string, parser: (source: string[]) => T): T[] {
+    let content = File.readFileSync(name).toString().split('\n');
+    return content.map(v => parser(v.split(' => ')));
 }

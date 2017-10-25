@@ -254,7 +254,7 @@ export interface BlockDataChoice {
     hoverSound: string;
     selectSound: string;
     time: number | string; // 可能存在表达式
-    align: Align;
+    align: Align | number;
 }
 
 export interface Choice {
@@ -263,11 +263,11 @@ export interface Choice {
 }
 
 export enum Align {
-    Left = -2,
-    Center = -1,
-    Right = -3,
-    Top = -4,
-    Bottom = -5
+    Left = 'Left',
+    Center = 'Center',
+    Right = 'Right',
+    Top = 'Top',
+    Bottom = 'Bottom'
 }
 
 export interface BlockDataNormal extends BlockDataBase {

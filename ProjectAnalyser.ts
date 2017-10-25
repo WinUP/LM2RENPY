@@ -221,8 +221,8 @@ function fillBlock(scene: GeneralScript.Scene, block:LiteScript.Block): void {
     } else if (block.type == LiteScript.BlockType.Menu) {
         let content = block.content<LiteScript.BlockDataMenu>();
         let sourceContent = source.data as GeneralScript.BlockDataMenu;
-        content.fadeIn = sourceContent.fadeIn;
-        content.fadeOut = sourceContent.fadeOut;
+        content.fadeIn = sourceContent.fadeIn / 1000;
+        content.fadeOut = sourceContent.fadeOut / 1000;
         if (sourceContent.timeLimitation)
             content.timeLimitation = sourceContent.timeLimitation;
         if (sourceContent.hoverSound)
@@ -321,7 +321,7 @@ function fillCalculator(codeSource: GeneralScript.Code, calculator: LiteScript.B
         let content = code.content<LiteScript.CalculatorDataPause>();
         let contentSource = (codeSource.data as GeneralScript.CalculatorDataPause);
         content.condition = contentSource.condition;
-        content.time = contentSource.time;
+        content.time = contentSource.time / 1000;
         code.scopeIndent = codeSource.scopeIndent;
     } else if (codeSource.type == GeneralScript.CalculatorType.DeleteObject) {
         let code = calculator.addCode(LiteScript.CalculatorType.DeleteObject);
@@ -357,7 +357,10 @@ function fillCalculator(codeSource: GeneralScript.Code, calculator: LiteScript.B
         let code = calculator.addCode(LiteScript.CalculatorType.StopMedia);
         let content = code.content<LiteScript.CalculatorDataStopMedia>();
         let contentSource = (codeSource.data as GeneralScript.CalculatorDataStopMedia);
-        content.fadeTime = contentSource.fadeTime;
+        if (typeof contentSource.fadeTime == 'number')
+            content.fadeTime = contentSource.fadeTime / 1000;
+        else
+            content.fadeTime = `(${contentSource.fadeTime}) / 1000`
         content.name = contentSource.name;
         code.scopeIndent = codeSource.scopeIndent;
     } else if (codeSource.type == GeneralScript.CalculatorType.Comment) {
@@ -447,14 +450,19 @@ function fillNormal(nodeSource: GeneralScript.Command[], blockContent: LiteScrip
             if (!content.effect)
                 throw `Cannot add image to block with id ${blockContent.block.id}: Failed to find effect with name ${contentSource.effect}`;
             let position: LiteScript.Point = null;
-            if (contentSource.x < 0 || contentSource.y < 0) {
-                position = new LiteScript.Point(0.0, 0.0, true);
+            position = new LiteScript.Point(0, 0);
+            if (typeof contentSource.x == 'string') {
+                position.percentageModeX = true;
                 if (contentSource.x == GeneralScript.Align.Left)
                     position.x = 0.0;
                 else if (contentSource.x == GeneralScript.Align.Center)
                     position.x = 0.5;
                 else if (contentSource.x == GeneralScript.Align.Right)
                     position.x = 1.0;
+            } else
+                position.x = contentSource.x;
+            if (typeof contentSource.y == 'string') {
+                position.percentageModeY = true;
                 if (contentSource.y == GeneralScript.Align.Top)
                     position.y = 0.0;
                 else if (contentSource.y == GeneralScript.Align.Center)
@@ -462,7 +470,7 @@ function fillNormal(nodeSource: GeneralScript.Command[], blockContent: LiteScrip
                 else if (contentSource.y == GeneralScript.Align.Bottom)
                     position.y = 1.0
             } else
-                position = new LiteScript.Point(contentSource.x, contentSource.y);
+                position.y = contentSource.y;
             content.position = position;
         } else if (commandSource.type == GeneralScript.CommandType.ChangeImage) {
             let contentSource = commandSource.content as GeneralScript.CommandContentChangeImage;

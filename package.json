@@ -10,9 +10,11 @@
   "author": "Lundarl Gholoi",
   "license": "ISC",
   "dependencies": {
+    "@types/readline-sync": "^1.4.2",
     "iconv-lite": "^0.4.19",
     "lodash": "^4.17.4",
     "node-opencc": "^2.0.1",
+    "readline-sync": "^1.4.7",
     "uuid": "^3.1.0",
     "xml2js": "^0.4.19"
   },

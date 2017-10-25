@@ -377,14 +377,7 @@ export class RenpyFile {
         if (data.clickSound)
             soundInfo.push(`"click": "${data.clickSound.path}"`);
         this.python(`sys_lm_menu_sound = {${soundInfo.join(', ')}}`);
-        if (data.fadeIn)
-            this.python(`renpy.transition(Dissolve(${data.fadeIn}))`);
-        this.line(`call screen lm_menu(sys_lm_menu_item, sys_lm_menu_sound, ${data.timeLimitation ? data.timeLimitation : 0})`);
-        // fadeOut still has no effect for Ren'Py
-        // if (fadeOut)
-        //     this.line(`with Dissolve(${fadeOut})`);
-        this.python('_lm_selected_value = _return["name"]');
-        this.python('_lm_selected_index = _return["index"]');
+        this.line(`call lm_menu(sys_lm_menu_item, sys_lm_menu_sound, ${data.timeLimitation ? data.timeLimitation : 0}, ${data.fadeIn}, ${data.fadeOut})`);
         this.python('del sys_lm_menu_item');
         this.python('del sys_lm_menu_sound');
     }
@@ -531,7 +524,7 @@ export class RenpyFile {
      * @param transformName 要使用的变换矩阵
      * @param zorder 图片优先级
      */
-    public show(name: string, withBlock: boolean = false, useExpression: boolean = false, rename: string = null, transformName: string = null, zorder: number = null): void {
+    public show(name: string, withBlock: boolean = false, useExpression: boolean = false, rename: string = null, transformName: string = null, zorder: number = null, layer: string = 'master'): void {
         let command: string = 'show';
         if (useExpression)
             command += ' expression';
@@ -542,6 +535,7 @@ export class RenpyFile {
             command += ` at ${transformName}`;
         if (zorder)
             command += ` zorder ${zorder}`;
+        command += ` onlayer ${layer}`;
         if (withBlock)
             command += ':';
         this.line(command);

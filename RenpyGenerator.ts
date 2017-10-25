@@ -3,6 +3,18 @@ import * as LiteScript from './include/LiteScript';
 import * as Utilities from './Utilities';
 import * as Renpy from './include/Renpy';
 
+let placeTranslation = Utilities.readDictionary<Renpy.NameWithId>('rs_names.txt', source => ({ name: source[0], id: source[1] }));
+
+// DEBUG support
+import * as File from 'fs';
+import * as _ from 'lodash';
+import * as ReadLine from 'readline-sync';
+let outputFile: string[] = new Array<string>();
+function debug(unique: boolean = true): void {
+    if (unique) outputFile = _.uniq(outputFile);
+    File.writeFileSync('debug.txt', outputFile.join('\n'));
+}
+
 export function generateRenpyCode(project: LiteScript.Project, position: string): void {
     RenpyFile.basePath = position;
     saveGlobalVariables(project);
@@ -15,6 +27,7 @@ export function generateRenpyCode(project: LiteScript.Project, position: string)
         saveFile(file, imageNameList);
     });
     saveDebugInformation(project, imageNameList);
+    debug();
 }
 
 function saveGlobalVariables(project: LiteScript.Project): void {
@@ -116,6 +129,7 @@ function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], m
     }
     if (block.nextBlocks.length > 0) {
         localFile.line();
+        localFile.indent(1);
         block.nextBlocks.forEach(next => {
             localFile.if(`judge_lm_condition(${Utilities.stringifyCondition(next.condition)})`);
             localFile.indent();
@@ -349,33 +363,70 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
         } else if (command.type == LiteScript.CommandType.DestroyImage) {
             let commandContent = command.content<LiteScript.CommandContentDestroyImage>();
             commandContent.target.forEach(target => {
-                let name = imageNameList.find(v => v.name == target);
-                if (!name)
+                if (target == '表示') {
+                    if (block.name.startsWith('School') || block.name.startsWith('Misaki'))
+                        localFile.python('set_place_title()');
+                    else
+                        localFile.python('set_place_title(_("故事中"))');
+                } else {
+                    let name = imageNameList.find(v => v.name == target);
+                    if (!name)
                     throw `Cannot hide image with name ${target}: No pre-defined tag for this name`;
-                localFile.hide(`tag_${name.id}`);
+                    localFile.hide(`tag_${name.id}`);
+                }
             });
             if (commandContent.effect)
                 localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
             localFile.line();
         } else if (command.type == LiteScript.CommandType.ChangeImage) {
             let commandContent = command.content<LiteScript.CommandContentChangeImage>();
-            let name = imageNameList.find(v => v.name == commandContent.name);
-            if (!name)
+            if (commandContent.name == '表示') {
+                if (commandContent.source.path.endsWith('Title.lcm')) {
+                    // ignore
+                } else {
+                    let nameList = commandContent.source.path.split('/');
+                    let translatedName = placeTranslation.find(v => v.name == nameList[nameList.length - 1]);
+                    if (translatedName) {
+                        localFile.python(`set_place_title(_("${translatedName.id}"))`);
+                    }
+                }
+            } else {
+                let name = imageNameList.find(v => v.name == commandContent.name);
+                if (!name)
                 throw `Cannot change image with name ${commandContent.name}: No pre-defined tag for this name`;
-            localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, null, null);
-            if (commandContent.effect)
+                localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, null, null);
+                if (commandContent.effect)
                 localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
-            localFile.line();
+                localFile.line();
+                //debug
+                if (name.name == '表示') outputFile.push('M ' + block.name + ' ' + commandContent.source.path);
+            }
         } else if (command.type == LiteScript.CommandType.Image) {
             let commandContent = command.content<LiteScript.CommandContentImage>();
-            let name = imageNameList.find(v => v.name == commandContent.name);
-            if (!name)
+            if (commandContent.name == '表示') {
+                if (commandContent.source.path.endsWith('Title.lcm')) {
+                    // ignore
+                } else {
+                    let nameList = commandContent.source.path.split('/');
+                    let translatedName = placeTranslation.find(v => v.name == nameList[nameList.length - 1]);
+                    if (translatedName) {
+                        localFile.python(`set_place_title(_("${translatedName.id}"))`);
+                    }
+                }
+            } else {
+                let name = imageNameList.find(v => v.name == commandContent.name);
+                if (!name)
                 throw `Cannot show image with name ${commandContent.name}: No pre-defined tag for this name`;
-            let transform = getTransformName(commandContent.position);
-            localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, transform, commandContent.priority);
-            if (commandContent.effect)
+                let transform = getTransformName(commandContent.position);
+                localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, transform, commandContent.priority / 100);
+                if (commandContent.effect)
                 localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
-            localFile.line();
+                localFile.line();
+                if (commandContent.mode == LiteScript.RepeatMode.WaitUntilFinish) {
+                    localFile.pause();
+                    localFile.line();
+                }
+            }
         }
         i ++;
     }
@@ -383,8 +434,8 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
 
 function getTransformName(position: LiteScript.Point): string {
     let result: string = '';
-    if (position.percentageMode) {
-        if ((position.x == 0 || position.x == 0.5 || position.x == 1) && (position.y == 0 || [position.y == 0.5 || position.y == 1])) {
+    if (position.percentageModeX && position.percentageModeY) {
+        if ((position.x == 0 || position.x == 0.5 || position.x == 1) && (position.y == 0 || position.y == 0.5 || position.y == 1)) {
             if (position.x == 0)
                 result += 'left';
             else if (position.x == 0.5)
@@ -400,8 +451,18 @@ function getTransformName(position: LiteScript.Point): string {
                 result += 'bottom';
         } else
         result += `Transform(xanchor=${position.x}, yanchor=${position.y})`;
-    } else
-        result += `Transform(xpos=${position.x}, ypos=${position.y})`;
+    } else {
+        let params: string[] = new Array<string>();
+        if (position.percentageModeX)
+            params.push(`xanchor=${position.x.toFixed(1)}`);
+        else
+            params.push(`xpos=${position.x}`);
+        if (position.percentageModeY)
+            params.push(`yanchor=${position.y.toFixed(1)}`);
+        else
+            params.push(`ypos=${position.y}`);
+        result = `Transform(${params.join(', ')})`;
+    }
     return result;
 }
 
