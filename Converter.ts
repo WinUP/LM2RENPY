@@ -55,7 +55,7 @@ export function calculatorVariable(source: LiveProject.CalcItem): GeneralScript.
         scope: null,
         type: null
     };
-    switch (source['VarScope']) {
+    switch (source['Scope']) {
         case LiveProject.CalculatorVariableScope.Normal:
             result.scope = GeneralScript.VariableScope.Normal
             break;
@@ -66,7 +66,7 @@ export function calculatorVariable(source: LiveProject.CalcItem): GeneralScript.
             result.scope = GeneralScript.VariableScope.Normal
             break;
     }
-    switch (source['VarType']) {
+    switch (source['Type']) {
         case LiveProject.VariableType.Boolean:
             result.type = GeneralScript.VariableType.Boolean;
             result.value = boolean(source['InitVal']);

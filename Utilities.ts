@@ -330,3 +330,16 @@ export function findCharacterByName(name: string, project: LiteScript.Project): 
     let result = project.resources.find(resource => resource.type == LiteScript.ResourceType.Character && (resource as LiteScript.CharacterResource).extraData == name);
     return result;
 }
+
+export function stringifyCondition(condition: LiteScript.Condition[]): string {
+    return '[' + condition.map(v => `{ "scope": ${v.scopeIndent}, "content": "${v.content.replace(/"/g, '\\"')}" }`).join(',') + ']';
+}
+
+export function calculateAnimationTime(animation: LiteScript.Animation[]): number {
+    let stopTime: number = 0;
+    animation.forEach(item => {
+        let time = item.startTime + item.period;
+        if (time > stopTime) stopTime = time;
+    });
+    return stopTime;
+}

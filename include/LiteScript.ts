@@ -270,7 +270,18 @@ export class File {
     }
 
     public findVariable(name: string): Variable {
+        return this.findVariableImplementation(name, []);
+    }
+
+    private findVariableImplementation(name: string, mappedFileId: string[]): Variable {
+        if (mappedFileId.includes(this._id)) return null;
+        mappedFileId.push(this._id);
         let result = this._variable.find(variable => variable.name == name);
+        if (!result && this.entrance)
+            for (let i = 0; i < this.entrance.previousBlocks.length; i++) {
+                result = this.entrance.previousBlocks[i].file.findVariableImplementation(name, mappedFileId);
+                if (result) break;
+            }
         if (!result)
             result = this._project.findVariable(name);
         return result ? result : null;

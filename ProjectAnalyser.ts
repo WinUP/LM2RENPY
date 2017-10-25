@@ -253,6 +253,7 @@ function fillCalculator(codeSource: GeneralScript.Code, calculator: LiteScript.B
         let code = calculator.addCode(LiteScript.CalculatorType.CreateVariable);
         let variable = (codeSource.data as GeneralScript.CalculatorDataCreateVariable).content;
         let target = new LiteScript.Variable(variable.name, variable.type, variable.scope);
+        target.value = variable.value;
         code.content<LiteScript.CalculatorDataVariable>().content = target;
         extraVariables.push(target);
         code.scopeIndent = codeSource.scopeIndent;
@@ -266,6 +267,7 @@ function fillCalculator(codeSource: GeneralScript.Code, calculator: LiteScript.B
             console.warn(`\tName: ${variableName}`);
             console.warn(`\tCleat at: ${calculator.block.id} (${calculator.block.name}) in file ${calculator.block.file.id} (${calculator.block.file.name})`);
             console.warn('');
+            variable = new LiteScript.Variable(variableName, LiteScript.VariableType.Integer, LiteScript.VariableScope.Normal);
         }
         code.content<LiteScript.CalculatorDataVariable>().content = variable;
         let extraVarIndex = extraVariables.findIndex(v => v.name == variable.name);
@@ -387,7 +389,7 @@ function fillNormal(nodeSource: GeneralScript.Command[], blockContent: LiteScrip
             console.warn(`\tAt: ${blockContent.block.id} (${blockContent.block.name}) in file ${blockContent.block.file.id} (${blockContent.block.file.name})`);
             console.warn();
         } else if (commandSource.type == GeneralScript.CommandType.ChangeMessageBox) {
-            blockContent.newItem(LiteScript.CommandType.ShowMessageBox).content<LiteScript.CommandContentNameTarget>().name = (commandSource.content as GeneralScript.CommandContentNameTarget).name;
+            blockContent.newItem(LiteScript.CommandType.SetMessageBoxTarget).content<LiteScript.CommandContentNameTarget>().name = (commandSource.content as GeneralScript.CommandContentNameTarget).name;
         } else if (commandSource.type == GeneralScript.CommandType.MessageBox) {
             blockContent.newItem(LiteScript.CommandType.ShowMessageBox).content<LiteScript.CommandContentTimeTarget>().time = (commandSource.content as GeneralScript.CommandContentTimeTarget).time;
         } else if (commandSource.type == GeneralScript.CommandType.DestroyMessageBox) {
@@ -502,6 +504,7 @@ function fillNormal(nodeSource: GeneralScript.Command[], blockContent: LiteScrip
             }
             content.character = activeCharacter;
             while (i < nodeSource.length && (commandSource.type == GeneralScript.CommandType.Text || commandSource.type == GeneralScript.CommandType.ShowVariableContent )) {
+                contentSource = commandSource.content as GeneralScript.CommandContentText;
                 let text = content.newText();
                 if (contentSource.bold) text.bold = contentSource.bold;
                 if (contentSource.borderColor) text.borderColor = contentSource.borderColor;
@@ -523,7 +526,7 @@ function fillNormal(nodeSource: GeneralScript.Command[], blockContent: LiteScrip
             }
             i --;
         } else if (commandSource.type == GeneralScript.CommandType.Effect) {
-
+            // No code for this part
         } else
             throw `Cannot add content to block with id ${blockContent.block.id}: Unknow content type ${commandSource.type}.`;
         i ++;
