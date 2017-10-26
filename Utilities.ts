@@ -333,7 +333,8 @@ export function findCharacterByName(name: string, project: LiteScript.Project): 
 }
 
 export function stringifyCondition(condition: LiteScript.Condition[]): string {
-    return '[' + condition.map(v => `{ "scope": ${v.scopeIndent}, "content": "${v.content.replace(/"/g, '\\"')}" }`).join(',') + ']';
+    let source = condition.filter(v => v.content && v.content != '');
+    return '[' + source.map(v => `{ "scope": ${v.scopeIndent}, "content": "${v.content.replace(/"/g, '\\"')}" }`).join(',') + ']';
 }
 
 export function calculateAnimationTime(animation: LiteScript.Animation[]): number {
@@ -348,4 +349,8 @@ export function calculateAnimationTime(animation: LiteScript.Animation[]): numbe
 export function readDictionary<T>(name: string, parser: (source: string[]) => T): T[] {
     let content = File.readFileSync(name).toString().split('\n');
     return content.map(v => parser(v.split(' => ')));
+}
+
+export function removeSelectorCondition(condition: LiteScript.Condition[]): LiteScript.Condition[] {
+    return condition.filter(v => !v.content.includes('_lm_selected_value'));
 }

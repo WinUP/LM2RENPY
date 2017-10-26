@@ -4,6 +4,7 @@ import * as Utilities from './Utilities';
 import * as Renpy from './include/Renpy';
 
 let placeTranslation = Utilities.readDictionary<Renpy.NameWithId>('rs_names.txt', source => ({ name: source[0], id: source[1] }));
+let characterTranslation = Utilities.readDictionary<Renpy.NameWithId>('rs_characters.txt', source => ({ name: source[0], id: source[1] }));
 
 // DEBUG support
 import * as File from 'fs';
@@ -77,11 +78,27 @@ function saveFile(source: LiteScript.File, imageNameList: Renpy.NameWithId[]): v
     localFile.comment(`From LiveMaker Scene: ${source.id} (${source.name})`);
     localFile.line();
     let mappedBlockId: string[] = new Array<string>();
-    loadBlock(source.entrance, imageNameList, mappedBlockId, localFile);
+    let ayumiGlobalMapInfo: string[] = new Array<string>();
+    loadBlock(source.entrance, imageNameList, mappedBlockId, ayumiGlobalMapInfo, localFile);
     localFile.save();
 }
 
-function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], mappedBlockId: string[], localFile: RenpyFile): void {
+function findAyumiGlobalGroup(block: LiteScript.Block, currentList: string[]): string[] {
+    if (currentList.includes(block.id)) return currentList;
+    currentList.push(block.id);
+    if (block.type == LiteScript.BlockType.Menu) {
+        if (block.name.startsWith('School inside')|| block.name.startsWith('School outside') || block.name.startsWith('Misaki') || block.name.startsWith('Hotel'))
+            return currentList;
+        else
+            throw `Cannot analyse next block with id ${block.id} for Ayumi Global map: Name ${block.name} is not a part of pre-defined map`;
+    }
+    block.nextBlocks.forEach(v => {
+        findAyumiGlobalGroup(v.target, currentList);
+    });
+    return currentList;
+}
+
+function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], mappedBlockId: string[], ayumiGlobalMapInfo: string[], localFile: RenpyFile): void {
     if (mappedBlockId.includes(block.id)) return;
     mappedBlockId.push(block.id);
     localFile.label(`${RenpyFile.prefix.block}_${block.id}`);
@@ -108,7 +125,27 @@ function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], m
         else
             localFile.call(`${RenpyFile.prefix.block}_${content.target.id}`);
     } else if (block.type == LiteScript.BlockType.Menu) {
-        localFile.callMenu(block.content<LiteScript.BlockDataMenu>());
+        if (ayumiGlobalMapInfo.includes(block.id)) {
+            let extraParams = /([^XCTLA]+)\s([XCTLA]+)/g.exec(block.name);
+            let conversations = block.nextBlocks.filter(v => v.target.name.startsWith('Conversation'));
+            let targets = block.nextBlocks.filter(v => v.target.name.startsWith('Target'));
+            let allowChangeTime = extraParams[2][0] == 'X' ? 'False' : 'True';
+            let allowAbandon = extraParams[2][3] == 'X' ? 'False' : 'True';
+            for (let i = 0; i < conversations.length; i++) {
+                for (let j = 0; j < targets.length; j++) {
+                    if (i == 0 && j == 0)
+                        localFile.if(`judge_lm_condition(${Utilities.stringifyCondition(Utilities.removeSelectorCondition(conversations[i].condition))}) and judge_lm_condition(${Utilities.stringifyCondition(Utilities.removeSelectorCondition(targets[j].condition))})`);
+                    else
+                        localFile.elif(`judge_lm_condition(${Utilities.stringifyCondition(Utilities.removeSelectorCondition(conversations[i].condition))}) and judge_lm_condition(${Utilities.stringifyCondition(Utilities.removeSelectorCondition(targets[j].condition))})`);
+                    localFile.indent();
+                    localFile.call(`scb_global_map(sys_ayumi_global_map_time, sys_ayumi_global_map_character , "${extraParams[1].toLowerCase().replace(/\s/g, '_')}", ${allowChangeTime}, ${allowAbandon}, talk_label="block_${conversations[i].target.id}", target_label="block_${targets[j].target.id}")`);
+                    localFile.unindent();
+                }
+            }
+            localFile.python(`del sys_ayumi_global_map_time`);
+            localFile.python(`del sys_ayumi_global_map_character`);
+        } else
+            localFile.callMenu(block.content<LiteScript.BlockDataMenu>());
     } else if (block.type == LiteScript.BlockType.Input) {
         localFile.callInput(block.content<LiteScript.BlockDataInput>());
     } else if (block.type == LiteScript.BlockType.Choice) {
@@ -124,8 +161,11 @@ function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], m
             localFile.undefineVariable(variable);
         });
     } else if (block.type == LiteScript.BlockType.Normal) {
+        if (block.name == 'School outside' || block.name == 'School inside' || block.name == 'Misaki' || block.name == 'Hotel') {
+            ayumiGlobalMapInfo = findAyumiGlobalGroup(block, []);
+        }
         let content = block.content<LiteScript.BlockDataNormal>();
-        loadNormal(content.items, localFile, block, imageNameList);
+        loadNormal(content.items, localFile, block, imageNameList, ayumiGlobalMapInfo);
     }
     if (block.nextBlocks.length > 0) {
         localFile.line();
@@ -143,7 +183,7 @@ function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], m
     localFile.unindent();
     localFile.line();
     block.nextBlocks.forEach(next => {
-        loadBlock(next.target, imageNameList, mappedBlockId, localFile);
+        loadBlock(next.target, imageNameList, mappedBlockId, ayumiGlobalMapInfo, localFile);
     });
 }
 
@@ -307,7 +347,7 @@ function findAllImageName(block: LiteScript.Block, imageNameList: Renpy.NameWith
     });
 }
 
-function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block: LiteScript.Block, imageNameList: Renpy.NameWithId[]): void {
+function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block: LiteScript.Block, imageNameList: Renpy.NameWithId[], ayumiGlobalMapInfo: string[]): void {
     let i = 0;
     let activeCharacter: LiteScript.CharacterResource = null;
     while (i < commands.length) {
@@ -374,7 +414,7 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                 } else {
                     let name = imageNameList.find(v => v.name == target);
                     if (!name)
-                    throw `Cannot hide image with name ${target}: No pre-defined tag for this name`;
+                        throw `Cannot hide image with name ${target}: No pre-defined tag for this name`;
                     localFile.hide(`tag_${name.id}`);
                 }
             });
@@ -396,7 +436,7 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
             } else {
                 let name = imageNameList.find(v => v.name == commandContent.name);
                 if (!name)
-                throw `Cannot change image with name ${commandContent.name}: No pre-defined tag for this name`;
+                    throw `Cannot change image with name ${commandContent.name}: No pre-defined tag for this name`;
                 localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, null, null);
                 if (commandContent.effect)
                 localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
@@ -417,17 +457,27 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                     }
                 }
             } else {
-                let name = imageNameList.find(v => v.name == commandContent.name);
-                if (!name)
-                throw `Cannot show image with name ${commandContent.name}: No pre-defined tag for this name`;
-                let transform = getTransformName(commandContent.position);
-                localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, transform, commandContent.priority / 100);
-                if (commandContent.effect)
-                localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
-                localFile.line();
-                if (commandContent.mode == LiteScript.RepeatMode.WaitUntilFinish) {
-                    localFile.pause();
+                if (ayumiGlobalMapInfo.includes(block.id)) {
+                    if (commandContent.name == '背景' || commandContent.name == '注意' || commandContent.name == '表示２' || commandContent.name == '天気') {
+                        // ignore
+                    } else if (commandContent.name == '友') {
+                        let path = /グラフィック\\Chapter (\d)\\Moving\\([^\/]+)\\([^\/]+)\.\S*/g.exec(commandContent.source.path);
+                        localFile.python(`sys_ayumi_global_map_character = "${characterTranslation.find(v => v.name == path[2]).id}"`);
+                        localFile.python(`sys_ayumi_global_map_time = "${path[3].toLowerCase()}"`);
+                    }
+                } else {
+                    let name = imageNameList.find(v => v.name == commandContent.name);
+                    if (!name)
+                    throw `Cannot show image with name ${commandContent.name}: No pre-defined tag for this name`;
+                    let transform = getTransformName(commandContent.position);
+                    localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, transform, commandContent.priority / 100);
+                    if (commandContent.effect)
+                    localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
                     localFile.line();
+                    if (commandContent.mode == LiteScript.RepeatMode.WaitUntilFinish) {
+                        localFile.pause();
+                        localFile.line();
+                    }
                 }
             }
         }
