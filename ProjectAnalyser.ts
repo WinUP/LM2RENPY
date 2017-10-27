@@ -66,8 +66,8 @@ export function analyseProject(source: GeneralScript.Project): LiteScript.Projec
             let result: LiteScript.Animation = {
                 name: animation.name,
                 source: source,
-                startTime: animation.startTime,
-                period: animation.period,
+                startTime: animation.startTime / 1000,
+                period: animation.period / 1000,
                 priority: animation.priority,
                 horizontalReverse: animation.horizontalReverse,
                 verticalReverse: animation.verticalReverse,

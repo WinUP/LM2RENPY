@@ -87,9 +87,13 @@ function findAyumiGlobalGroup(block: LiteScript.Block, currentList: string[]): s
     if (currentList.includes(block.id)) return currentList;
     currentList.push(block.id);
     if (block.type == LiteScript.BlockType.Menu) {
-        if (block.name.startsWith('School inside')|| block.name.startsWith('School outside') || block.name.startsWith('Misaki') || block.name.startsWith('Hotel'))
+        if (block.name.startsWith('School inside')|| block.name.startsWith('School outside') || block.name.startsWith('Misaki') || block.name.startsWith('Hotel')) {
+            block.nextBlocks.forEach(v => {
+                if (v.target.name.startsWith('Target') || v.target.name.startsWith('Conversation') || v.target.name.startsWith('Character'))
+                    currentList.push(v.target.id);
+            });
             return currentList;
-        else
+        } else
             throw `Cannot analyse next block with id ${block.id} for Ayumi Global map: Name ${block.name} is not a part of pre-defined map`;
     }
     block.nextBlocks.forEach(v => {
@@ -167,7 +171,7 @@ function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], m
         let content = block.content<LiteScript.BlockDataNormal>();
         loadNormal(content.items, localFile, block, imageNameList, ayumiGlobalMapInfo);
     }
-    if (block.nextBlocks.length > 0) {
+    if (block.nextBlocks.length > 0 && !(ayumiGlobalMapInfo.includes(block.id) && (block.name.startsWith('Target') || block.name.startsWith('Conversation') || block.name.startsWith('Character')))) {
         localFile.line();
         localFile.indent(1);
         block.nextBlocks.forEach(next => {
@@ -433,10 +437,8 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                         localFile.python(`set_place_title(_("${translatedName.id}"))`);
                     }
                 }
-            } else if (block.name.startsWith('Target') || block.name.startsWith('Conversation') || block.name.startsWith('Character')) {
-                // ignore
             } else {
-                if (ayumiGlobalMapInfo.includes(block.id) && (commandContent.name == '背景' || commandContent.name == '注意' || commandContent.name == '表示２' || commandContent.name == '天気')) {
+                if (ayumiGlobalMapInfo.includes(block.id) && (commandContent.name == '背景' || commandContent.name == '注意' || commandContent.name == '表示２' || commandContent.name == '天気') || block.name.startsWith('Target') || block.name.startsWith('Conversation') || block.name.startsWith('Character')) {
                     // ignore
                 } else {
                     let name = imageNameList.find(v => v.name == commandContent.name);
@@ -462,15 +464,13 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                 }
             } else {
                 if (ayumiGlobalMapInfo.includes(block.id)) {
-                    if (commandContent.name == '背景' || commandContent.name == '注意' || commandContent.name == '表示２' || commandContent.name == '天気') {
+                    if (commandContent.name == '背景' || commandContent.name == '注意' || commandContent.name == '表示２' || commandContent.name == '天気' || block.name.startsWith('Target') || block.name.startsWith('Conversation') || block.name.startsWith('Character')) {
                         // ignore
                     } else if (commandContent.name == '友') {
                         let path = /グラフィック\\Chapter (\d)\\Moving\\([^\/]+)\\([^\/]+)\.\S*/g.exec(commandContent.source.path);
                         localFile.python(`sys_ayumi_global_map_character = "${characterTranslation.find(v => v.name == path[2]).id}"`);
                         localFile.python(`sys_ayumi_global_map_time = "${path[3].toLowerCase()}"`);
                     }
-                } else if (block.name.startsWith('Target') || block.name.startsWith('Conversation') || block.name.startsWith('Character')) {
-                    // ignore
                 } else {
                     let name = imageNameList.find(v => v.name == commandContent.name);
                     if (!name)

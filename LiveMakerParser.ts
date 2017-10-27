@@ -566,9 +566,9 @@ function parseAnimation(source: string): GeneralScript.Animation[] {
     let result: GeneralScript.Animation[] = [];
     for (let i = 0; i < fileCount; i++) {
         let animation: GeneralScript.Animation = {} as GeneralScript.Animation;
-        animation.period = origin.readInt32LE(offset) / 60;
+        animation.period = origin.readInt32LE(offset) / 60 * 1000;
         offset += 8;
-        animation.startTime = origin.readInt32LE(offset) / 60;
+        animation.startTime = origin.readInt32LE(offset) / 60 * 1000;
         offset += 8;
         animation.priority = origin.readInt32LE(offset);
         offset += 4;
@@ -786,13 +786,13 @@ function parseCode(source: LiveProject.CalcItem): GeneralScript.Code {
         result.type = GeneralScript.CalculatorType.StopMedia;
         let data: GeneralScript.CalculatorDataStopMedia= {
             name: source['Target'],
-            fadeTime: +source['Time'] / 1000
+            fadeTime: +source['Time']
         };
         result.data = data;
     } else if (source.$Command == LiveProject.CommandType.Wait) {
         result.type = GeneralScript.CalculatorType.Pause;
         let data: GeneralScript.CalculatorDataPause= {
-            time: +source['Time'] / 1000,
+            time: +source['Time'],
             condition: source['Calc']
         };
         result.data = data;
