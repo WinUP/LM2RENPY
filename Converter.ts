@@ -131,12 +131,21 @@ export function blockType(nodeType: LiveProject.NodeType): GeneralScript.BlockTy
 
 export function condition(source: string): GeneralScript.Condition[] {
     let rawData = source.split('&#13;&#10;').map(v => ({
-        scope: +(v.substring(0, v.indexOf(' '))),
+        children: +(v.substring(0, v.indexOf(' '))),
         code: v.substring(v.indexOf(' ') + 1)
     }));
-    let maxScope = rawData.map(v => v.scope).reduce((r, v) => v > r ? v : r, 0);
-    rawData.forEach(v => v.scope = maxScope - v.scope);
-    return rawData.map(v => ({ content: v.code, scopeIndent: v.scope ? v.scope : 0 }));
+    let result: GeneralScript.Condition[] = [];
+    let remainedChildren: number[] = [];
+    for (let i = 0; i < rawData.length; i++) {
+        while (remainedChildren.length >= 0 && remainedChildren[remainedChildren.length - 1] == 0)
+            remainedChildren.pop();
+        if (remainedChildren.length > 0 && remainedChildren[remainedChildren.length - 1] > 0)
+            remainedChildren[remainedChildren.length - 1] --;
+        result.push({ content: rawData[i].code, scopeIndent: remainedChildren.length });
+        if (rawData[i].children > 0)
+            remainedChildren.push(rawData[i].children);
+    }
+    return result;
 }
 
 export function align(source: number | string): GeneralScript.Align | number {

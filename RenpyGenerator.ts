@@ -433,16 +433,20 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                         localFile.python(`set_place_title(_("${translatedName.id}"))`);
                     }
                 }
+            } else if (block.name.startsWith('Target') || block.name.startsWith('Conversation') || block.name.startsWith('Character')) {
+                // ignore
             } else {
-                let name = imageNameList.find(v => v.name == commandContent.name);
-                if (!name)
-                    throw `Cannot change image with name ${commandContent.name}: No pre-defined tag for this name`;
-                localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, null, null);
-                if (commandContent.effect)
-                localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
-                localFile.line();
-                //debug
-                if (name.name == '表示') outputFile.push('M ' + block.name + ' ' + commandContent.source.path);
+                if (ayumiGlobalMapInfo.includes(block.id) && (commandContent.name == '背景' || commandContent.name == '注意' || commandContent.name == '表示２' || commandContent.name == '天気')) {
+                    // ignore
+                } else {
+                    let name = imageNameList.find(v => v.name == commandContent.name);
+                    if (!name)
+                        throw `Cannot change image with name ${commandContent.name}: No pre-defined tag for this name`;
+                    localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, null, null);
+                    if (commandContent.effect)
+                    localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
+                    localFile.line();
+                }
             }
         } else if (command.type == LiteScript.CommandType.Image) {
             let commandContent = command.content<LiteScript.CommandContentImage>();
@@ -465,12 +469,14 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                         localFile.python(`sys_ayumi_global_map_character = "${characterTranslation.find(v => v.name == path[2]).id}"`);
                         localFile.python(`sys_ayumi_global_map_time = "${path[3].toLowerCase()}"`);
                     }
+                } else if (block.name.startsWith('Target') || block.name.startsWith('Conversation') || block.name.startsWith('Character')) {
+                    // ignore
                 } else {
                     let name = imageNameList.find(v => v.name == commandContent.name);
                     if (!name)
                     throw `Cannot show image with name ${commandContent.name}: No pre-defined tag for this name`;
                     let transform = getTransformName(commandContent.position);
-                    localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, transform, commandContent.priority / 100);
+                    localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, transform, commandContent.priority);
                     if (commandContent.effect)
                     localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
                     localFile.line();

@@ -413,9 +413,10 @@ export class RenpyFile {
             this.line(`call screen lm_choice(sys_lm_choice_item, sys_lm_choice_sound, ${data.time ? data.time : 0})`);
         else {
             let name = `${RenpyFile.prefix.imageResource}_${data.time.id}`;
-            this.show(name, false, false, null, null, 1000);
+            let id = `rs_image_choice_${Utilities.newUUID()}`;
+            this.show(name, false, false, id, null, 10000);
             this.line(`call screen lm_choice(sys_lm_choice_item, sys_lm_choice_sound, ${Utilities.calculateAnimationTime(data.time.extraData)})`);
-            this.hide(name);
+            this.hide(id);
         }
         this.python('_lm_selected_value = _return');
         this.python('del sys_lm_choice_item');
@@ -518,23 +519,25 @@ export class RenpyFile {
 
     /**
      * 显示一张图片
-     * @param name 图片名称
+     * @param url 图片路径
      * @param useExpression 是否将名称作为表达式解析
      * @param rename 图片别名
      * @param transformName 要使用的变换矩阵
      * @param zorder 图片优先级
      */
-    public show(name: string, withBlock: boolean = false, useExpression: boolean = false, rename: string = null, transformName: string = null, zorder: number = null, layer: string = 'master'): void {
+    public show(url: string, withBlock: boolean = false, useExpression: boolean = false, rename: string, transformName: string = null, zorder: number = null, layer: string = 'master'): void {
         let command: string = 'show';
         if (useExpression)
             command += ' expression';
-        command += ` ${name}`;
-        if (rename && rename != '')
-            command += ` as ${rename}`;
+        command += ` ${url}`;
+        if (rename == '')
+            throw `Cannot show image in ${url} to screen: Image must has a name`;
+        command += ` as ${rename}`;
         if (transformName && transformName != '')
             command += ` at ${transformName}`;
-        if (zorder)
-            command += ` zorder ${zorder}`;
+        if (zorder != null)
+            this.python(`zorder_${rename} = ${zorder}`);
+        command += ` zorder zorder_${rename}`;
         command += ` onlayer ${layer}`;
         if (withBlock)
             command += ':';
