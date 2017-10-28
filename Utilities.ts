@@ -251,7 +251,7 @@ export function normalizeVariableValue(variable: LiteScript.Variable): void {
     if (variable.type == LiteScript.VariableType.String && variable.value[0] != '"')
         variable.value = `"${variable.value}"`;
     if (variable.type == LiteScript.VariableType.Boolean)
-        variable.value = variable.value ? 'True' : 'False';
+        variable.value = variable.value && variable.value != 'False' && variable.value != 'FALSE' && variable.value != 0 && variable.value != 'false' ? 'True' : 'False';
 }
 
 export function newUUID(): string {

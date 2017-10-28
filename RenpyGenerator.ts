@@ -128,7 +128,6 @@ function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], m
     localFile.comment(`Node: ${block.id} (${block.name})`);
     if (block.type == LiteScript.BlockType.SceneStart) {
         block.file.variables.forEach(variable => {
-            Utilities.normalizeVariableValue(variable);
             localFile.defineVariable(variable);
         });
     } else if (block.type == LiteScript.BlockType.SceneEnd) {
@@ -175,7 +174,6 @@ function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], m
     } else if (block.type == LiteScript.BlockType.Calculator) {
         let content = block.content<LiteScript.BlockDataCalculator>();
         content.variables.forEach(variable => {
-            Utilities.normalizeVariableValue(variable);
             localFile.defineVariable(variable);
         });
         loadCalculator(content.codes, localFile, block);
@@ -275,7 +273,6 @@ function loadCalculator(codes: LiteScript.Code[], localFile: RenpyFile, block: L
                     localFile.pause(content.time);
             } else if (code.type == LiteScript.CalculatorType.CreateVariable) {
                 let content = code.content<LiteScript.CalculatorDataVariable>();
-                Utilities.normalizeVariableValue(content.content);
                 localFile.defineVariable(content.content);
             } else if (code.type == LiteScript.CalculatorType.ClearVariable) {
                 localFile.python(`del ${code.content<LiteScript.CalculatorDataVariable>().content.name}`);
