@@ -312,8 +312,11 @@ export class RenpyFile {
      * 转入指定标签
      * @param target 标签名称
      */
-    public call(target: string): void {
-        this.line(`call ${target}`);
+    public call(target: string, ...params: string[]): void {
+        if (params.length == 0)
+            this.line(`call ${target}`);
+        else 
+            this.line(`call ${target}(${params.join(', ')})`);
     }
 
     /**
@@ -611,8 +614,15 @@ export class RenpyFile {
      * @param source 音频文件路径
      * @param channel 要使用的音轨
      */
-    public sound(source: LiteScript.SoundResource, channel: Renpy.SoundChannel): void {
-        this.line(`play ${channel} "${source.path}"`);
+    public sound(source: LiteScript.SoundResource, channel: Renpy.SoundChannel, loop?: boolean): void {
+        let code = `play ${channel} "${source.path}"`;
+        if (loop != null) {
+            if (loop)
+                code += ' loop';
+            else
+                code += ' noloop';
+        }
+        this.line(code);
     }
 
     /**

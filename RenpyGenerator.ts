@@ -5,6 +5,7 @@ import * as Renpy from './include/Renpy';
 
 let placeTranslation = Utilities.readDictionary<Renpy.NameWithId>('rs_names.txt', source => ({ name: source[0], id: source[1] }));
 let characterTranslation = Utilities.readDictionary<Renpy.NameWithId>('rs_characters.txt', source => ({ name: source[0], id: source[1] }));
+let selectorPageData = Utilities.readDictionary<Renpy.NameWithIds>('rs_menu_choice.txt', source => ({ name: source[0], id: source[1].split(' | ') }));
 
 // DEBUG support
 import * as File from 'fs';
@@ -165,8 +166,34 @@ function loadBlock(block: LiteScript.Block, imageNameList: Renpy.NameWithId[], m
             }
             localFile.python(`del sys_ayumi_global_map_time`);
             localFile.python(`del sys_ayumi_global_map_character`);
-        } else
-            localFile.callMenu(block.content<LiteScript.BlockDataMenu>());
+        } else {
+            let shouldCallSelectorScreen: boolean = true;
+            let content = block.content<LiteScript.BlockDataMenu>();
+            for (let i = 0; i < content.target.extraData.item.length; i++) {
+                let menuItem = content.target.extraData.item[i];
+                if (!menuItem.idleImage.path.startsWith('images/Selection/')) {
+                    shouldCallSelectorScreen = false;
+                    break;
+                }
+                if (menuItem.preview.image) {
+                    shouldCallSelectorScreen = false;
+                    break;
+                }
+                if (!selectorPageData.find(v => v.name == menuItem.idleImage.path.split('/')[2])) {
+                    shouldCallSelectorScreen = false;
+                    break;
+                }
+            }
+            if (shouldCallSelectorScreen) {
+                let items: string[] = [];
+                let data = selectorPageData.find(v => v.name == content.target.extraData.item[0].idleImage.path.split('/')[2]);
+                for (let i = 0; i < data.id.length; i++) {
+                    items.push(`{"name":"${content.target.extraData.item[i].name}", "content":"${data.id[i]}"}`);
+                }
+                localFile.call(`scb_selector`, '""', `[${items.join(', ')}]`);
+            } else
+                localFile.callMenu(content);
+        }
     } else if (block.type == LiteScript.BlockType.Input) {
         localFile.callInput(block.content<LiteScript.BlockDataInput>());
     } else if (block.type == LiteScript.BlockType.Choice) {
@@ -413,7 +440,7 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
             localFile.python(`set_window("${command.content<LiteScript.CommandContentNameTarget>().name}")`);
         } else if (command.type == LiteScript.CommandType.Sound) {
             let commandContent = command.content<LiteScript.CommandContentSound>();
-            localFile.sound(commandContent.source, findSoundtrack(commandContent.track));
+            localFile.sound(commandContent.source, findSoundtrack(commandContent.track), commandContent.mode == LiteScript.RepeatMode.Repeat);
             localFile.line();
         } else if (command.type == LiteScript.CommandType.StopSound) {
             let commandContent = command.content<LiteScript.CommandContentStopSound>();

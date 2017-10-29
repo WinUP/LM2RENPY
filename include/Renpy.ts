@@ -7,7 +7,14 @@ export enum SoundChannel {
     Voice2 = 'voice2'
 }
 
-export interface NameWithId {
+export interface IdContent<T> {
+    id: T;
+}
+
+export interface NameWithId extends IdContent<string> {
     name: string;
-    id: string;
+}
+
+export interface NameWithIds extends IdContent<string[]> {
+    name: string;
 }
