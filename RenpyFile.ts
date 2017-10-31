@@ -547,6 +547,21 @@ export class RenpyFile {
         this.line(command);
     }
 
+    public showGroup(sources: {url: string, rename: string, transform?: string, zorder?: number, layer?: string}[]): void {
+        sources.forEach(source => {
+            if (source.zorder != null)
+                this.python(`zorder_${source.rename} = ${source.zorder}`);
+        });
+        sources.forEach(source => {
+            let command: string = `show ${source.url} as ${source.rename}`;
+            if (source.transform && source.transform != '')
+                command += ` at ${source.transform}`;
+            command += ` zorder zorder_${source.rename}`;
+            command += ` onlayer ${source.layer ? source.layer : 'master'}`;
+            this.line(command);
+        });
+    }
+
     /**
      * 通过Python显示图片（支持表达式解析和非英文字符）
      * @param name 图片名称
