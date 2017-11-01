@@ -1,3 +1,5 @@
+import * as LiteScript from './LiteScript';
+
 export enum SoundChannel {
     Bgm = 'music',
     Bgm2 = 'music2',
@@ -17,4 +19,11 @@ export interface NameWithId extends IdContent<string> {
 
 export interface NameWithIds extends IdContent<string[]> {
     name: string;
+}
+
+export interface PendingImage {
+    name: string;
+    transform: string;
+    zorder: number;
+    target: LiteScript.ImageResource | LiteScript.AnimationResource;
 }

@@ -396,7 +396,7 @@ function findAllImageName(block: LiteScript.Block, imageNameList: Renpy.NameWith
 function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block: LiteScript.Block, imageNameList: Renpy.NameWithId[], ayumiGlobalMapInfo: string[]): void {
     let i = 0;
     let activeCharacter: LiteScript.CharacterResource = null;
-    let pendingShowImages: { name: string, transform: string, zorder: number, target: LiteScript.ImageResource | LiteScript.AnimationResource }[] = [];
+    let pendingShowImages: Renpy.PendingImage[] = [];
     while (i < commands.length) {
         let command = commands[i];
         if (command.type == LiteScript.CommandType.Dialogue) {
@@ -465,8 +465,13 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                     localFile.hide(`tag_${name.id}`);
                 }
             });
-            if (commandContent.effect)
+            if (commandContent.effect) {
+                if (pendingShowImages.length > 0) {
+                    showAllPendingImages(pendingShowImages, localFile);
+                    pendingShowImages = [];
+                }
                 localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
+            }
             localFile.line();
         } else if (command.type == LiteScript.CommandType.ChangeImage) {
             let commandContent = command.content<LiteScript.CommandContentChangeImage>();
@@ -492,24 +497,17 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                         pendingShowImages.push({ name: name.id, target: commandContent.source, transform: null, zorder: null });
                     } else {
                         if (pendingShowImages.length > 0) {
-                            let group = pendingShowImages.map(image => ({
-                                url: `${RenpyFile.prefix.imageResource}_${image.target.id}`,
-                                rename: `tag_${image.name}`,
-                                transform: image.transform,
-                                zorder: image.zorder
-                            }));
-                            group.push({
-                                url: `${RenpyFile.prefix.imageResource}_${commandContent.source.id}`,
-                                rename: `tag_${name.id}`,
+                            pendingShowImages.push({
+                                name: name.id,
+                                target: commandContent.source,
                                 transform: null,
                                 zorder: null
                             });
-                            localFile.showGroup(group);
+                            showAllPendingImages(pendingShowImages, localFile);
                             pendingShowImages = [];
                         } else
                             localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, null, null);
-                        if (commandContent.effect)
-                            localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
+                        localFile.with(`${RenpyFile.prefix.effect}_${commandContent.effect.id}`);
                         localFile.line();
                     }
                 }
@@ -545,19 +543,13 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                         pendingShowImages.push({ name: name.id, target: commandContent.source, transform: transform, zorder: commandContent.priority });
                     } else {
                         if (pendingShowImages.length > 0) {
-                            let group = pendingShowImages.map(image => ({
-                                url: `${RenpyFile.prefix.imageResource}_${image.target.id}`,
-                                rename: `tag_${image.name}`,
-                                transform: image.transform,
-                                zorder: image.zorder
-                            }));
-                            group.push({
-                                url: `${RenpyFile.prefix.imageResource}_${commandContent.source.id}`,
-                                rename: `tag_${name.id}`,
+                            pendingShowImages.push({
+                                name: name.id,
+                                target: commandContent.source,
                                 transform: transform,
                                 zorder: commandContent.priority
                             });
-                            localFile.showGroup(group);
+                            showAllPendingImages(pendingShowImages, localFile);
                             pendingShowImages = [];
                         } else
                             localFile.show(`${RenpyFile.prefix.imageResource}_${commandContent.source.id}`, false, false, `tag_${name.id}`, transform, commandContent.priority);
@@ -570,6 +562,16 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
         }
         i ++;
     }
+}
+
+function showAllPendingImages(list: Renpy.PendingImage[], localFile: RenpyFile,): void {
+    let group = list.map(image => ({
+        url: `${RenpyFile.prefix.imageResource}_${image.target.id}`,
+        rename: `tag_${image.name}`,
+        transform: image.transform,
+        zorder: image.zorder
+    }));
+    localFile.showGroup(group);
 }
 
 function getTransformName(position: LiteScript.Point): string {
