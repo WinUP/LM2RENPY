@@ -397,6 +397,7 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
     let i = 0;
     let activeCharacter: LiteScript.CharacterResource = null;
     let pendingShowImages: Renpy.PendingImage[] = [];
+    let shouldSkipNextClear: boolean = false;
     while (i < commands.length) {
         let command = commands[i];
         if (command.type == LiteScript.CommandType.Dialogue) {
@@ -427,9 +428,15 @@ function loadNormal(commands: LiteScript.Command[], localFile: RenpyFile, block:
                 activeCharacter = currentCharacter;
                 localFile.text(activeCharacter, dialogueText);
             }
+            if (!command)
+                shouldSkipNextClear = true;
+            else
+                shouldSkipNextClear = command.type == LiteScript.CommandType.WaitAndClear;
             i --;
         } else if (command.type == LiteScript.CommandType.WaitAndClear) {
             activeCharacter = null;
+            if (!shouldSkipNextClear)
+                localFile.pause();
             localFile.line();
         } else if (command.type == LiteScript.CommandType.ShowMessageBox) {
             localFile.window(true);
@@ -634,7 +641,7 @@ function styleText(text: LiteScript.Text[]): string {
 }
 
 function removeUselessCharacter(text: string): string {
-    text = text.replace(/\\n/g, '');
+    // text = text.replace(/\\n/g, '');
     text = text.replace(/「/g, '');
     text = text.replace(/」/g, '');
     if (text.endsWith('{w}'))
