@@ -629,7 +629,7 @@ export class RenpyFile {
      * @param source 音频文件路径
      * @param channel 要使用的音轨
      */
-    public sound(source: LiteScript.SoundResource, channel: Renpy.SoundChannel, loop?: boolean): void {
+    public sound(source: LiteScript.SoundResource, channel: Renpy.SoundChannel, loop?: boolean, forceRestart: boolean = false): void {
         let code = `play ${channel} "${source.path}"`;
         if (loop != null) {
             if (loop)
@@ -637,7 +637,14 @@ export class RenpyFile {
             else
                 code += ' noloop';
         }
+        if (!forceRestart) {
+            this.if(`sys_${channel}_current_file != "${source.path}"`);
+            this.indent();
+        }
         this.line(code);
+        this.python(`sys_${channel}_current_file = "${source.path}"`);
+        if (!forceRestart)
+            this.unindent();
     }
 
     /**
